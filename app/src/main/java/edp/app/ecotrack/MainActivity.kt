@@ -3,45 +3,102 @@ package edp.app.ecotrack
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import edp.app.ecotrack.ui.theme.MyApplicationTheme
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import edp.app.ecotrack.components.BottomNavigationBar
+import edp.app.ecotrack.navigation.EcoTrackNavigation
+import edp.app.ecotrack.ui.theme.EcoTrackTheme
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
         setContent {
-            MyApplicationTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+            EcoTrackTheme {
+                EcoTrackApp()
             }
         }
     }
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+fun EcoTrackApp() {
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    MyApplicationTheme {
-        Greeting("Android")
+    val navController = rememberNavController()
+
+    val navBackStackEntry =
+        navController.currentBackStackEntryAsState()
+
+    val currentRoute =
+        navBackStackEntry.value?.destination?.route
+
+    val selectedItem = when (currentRoute) {
+        "home" -> "Home"
+        "schedule" -> "Schedule"
+        "report" -> "Report"
+        "guide" -> "Guide"
+        "profile" -> "Profile"
+        else -> "Home"
+    }
+
+    Scaffold(
+        bottomBar = {
+
+            if (
+                currentRoute == "home" ||
+                currentRoute == "schedule" ||
+                currentRoute == "report" ||
+                currentRoute == "guide" ||
+                currentRoute == "profile"
+            ) {
+
+                BottomNavigationBar(
+                    selectedItem = selectedItem,
+                    onItemSelected = { item ->
+
+                        val route = when (item) {
+                            "Home" -> "home"
+                            "Schedule" -> "schedule"
+                            "Report" -> "report"
+                            "Guide" -> "guide"
+                            "Profile" -> "profile"
+                            else -> "home"
+                        }
+
+                        if (currentRoute != route) {
+
+                            navController.navigate(route) {
+
+                                popUpTo("home") {
+                                    saveState = false
+                                }
+
+                                launchSingleTop = true
+                                restoreState = false
+                            }
+                        }
+                    }
+                )
+            }
+        }
+    ) { innerPadding ->
+
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+
+            EcoTrackNavigation(
+                navController = navController
+            )
+        }
     }
 }
