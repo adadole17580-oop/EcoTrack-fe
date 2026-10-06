@@ -153,7 +153,6 @@ fun GuideScreen() {
     ) {
 
         item {
-            // Dark Green Header Box
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -338,7 +337,6 @@ private fun WasteCategoryCard(
                     modifier = Modifier.height(16.dp)
                 )
 
-                // Examples Section
                 Text(
                     text = "Examples",
                     color = EcoDarkGreen,
@@ -382,7 +380,6 @@ private fun WasteCategoryCard(
                     modifier = Modifier.height(18.dp)
                 )
 
-                // How to dispose Section
                 Text(
                     text = "How to dispose",
                     color = EcoDarkGreen,

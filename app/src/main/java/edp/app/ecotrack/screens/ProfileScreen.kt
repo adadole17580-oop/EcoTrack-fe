@@ -57,10 +57,6 @@ fun ProfileScreen(
     onNotificationsClick: () -> Unit = {}
 ) {
 
-    // =====================================================
-    // DIALOG STATES
-    // =====================================================
-
     var showChangePassword by remember {
         mutableStateOf(false)
     }
@@ -85,11 +81,6 @@ fun ProfileScreen(
         mutableStateOf(false)
     }
 
-
-    // =====================================================
-    // PROFILE INFORMATION
-    // =====================================================
-
     var fullName by remember {
         mutableStateOf("Shania Castro")
     }
@@ -106,20 +97,11 @@ fun ProfileScreen(
         mutableStateOf("Zone 10, Barangay Bulua")
     }
 
-
-    // =====================================================
-    // MAIN SCREEN
-    // =====================================================
-
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(EcoLightGreen)
     ) {
-
-        // =================================================
-        // GREEN HEADER
-        // =================================================
 
         Row(
             modifier = Modifier
@@ -178,11 +160,6 @@ fun ProfileScreen(
             }
         }
 
-
-        // =================================================
-        // SCROLLABLE CONTENT
-        // =================================================
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -196,10 +173,6 @@ fun ProfileScreen(
                     bottom = 30.dp
                 )
         ) {
-
-            // =================================================
-            // PROFILE CARD
-            // =================================================
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -222,8 +195,6 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-
-                        // Profile picture
 
                         Box(
                             modifier = Modifier
@@ -283,9 +254,6 @@ fun ProfileScreen(
                         modifier = Modifier.height(13.dp)
                     )
 
-
-                    // Edit Profile button
-
                     OutlinedButton(
                         onClick = {
                             showEditProfile = true
@@ -326,10 +294,6 @@ fun ProfileScreen(
             )
 
 
-            // =================================================
-            // ACCOUNT SECTION
-            // =================================================
-
             Text(
                 text = "Account",
                 color = EcoDarkGreen,
@@ -340,9 +304,6 @@ fun ProfileScreen(
             Spacer(
                 modifier = Modifier.height(10.dp)
             )
-
-
-            // Change Password
 
             ProfileOptionCard(
                 icon = Icons.Default.Lock,
@@ -360,11 +321,6 @@ fun ProfileScreen(
                 modifier = Modifier.height(12.dp)
             )
 
-
-            // =================================================
-            // COMMUNITY SECTION
-            // =================================================
-
             Text(
                 text = "Community",
                 color = EcoDarkGreen,
@@ -375,9 +331,6 @@ fun ProfileScreen(
             Spacer(
                 modifier = Modifier.height(10.dp)
             )
-
-
-            // Contact Barangay Hall
 
             ProfileOptionCard(
                 icon = Icons.Default.Phone,
@@ -395,9 +348,6 @@ fun ProfileScreen(
                 modifier = Modifier.height(12.dp)
             )
 
-
-            // My Barangay
-
             ProfileOptionCard(
                 icon = Icons.Default.LocationOn,
                 title = "My Barangay",
@@ -414,11 +364,6 @@ fun ProfileScreen(
                 modifier = Modifier.height(22.dp)
             )
 
-
-            // =================================================
-            // SESSION SECTION
-            // =================================================
-
             Text(
                 text = "Session",
                 color = EcoDarkGreen,
@@ -429,9 +374,6 @@ fun ProfileScreen(
             Spacer(
                 modifier = Modifier.height(10.dp)
             )
-
-
-            // Logout
 
             ProfileOptionCard(
                 icon = Icons.Default.Logout,
@@ -448,11 +390,6 @@ fun ProfileScreen(
             Spacer(
                 modifier = Modifier.height(14.dp)
             )
-
-
-            // =================================================
-            // DELETE ACCOUNT
-            // =================================================
 
             ProfileOptionCard(
                 icon = Icons.Default.Person,
@@ -471,11 +408,6 @@ fun ProfileScreen(
             Spacer(
                 modifier = Modifier.height(20.dp)
             )
-
-
-            // =================================================
-            // APP INFORMATION
-            // =================================================
 
             Text(
                 text = "EcoTrack",
@@ -498,11 +430,6 @@ fun ProfileScreen(
             )
         }
 
-
-        // =====================================================
-        // EDIT PROFILE DIALOG
-        // =====================================================
-
         if (showEditProfile) {
 
             EditProfileDialog(
@@ -521,11 +448,6 @@ fun ProfileScreen(
             )
         }
 
-
-        // =====================================================
-        // CHANGE PASSWORD DIALOG
-        // =====================================================
-
         if (showChangePassword) {
 
             ChangePasswordDialog(
@@ -534,11 +456,6 @@ fun ProfileScreen(
                 }
             )
         }
-
-
-        // =====================================================
-        // CONTACT BARANGAY DIALOG
-        // =====================================================
 
         if (showContactBarangay) {
 
@@ -549,11 +466,6 @@ fun ProfileScreen(
             )
         }
 
-
-        // =====================================================
-        // MY BARANGAY DIALOG
-        // =====================================================
-
         if (showMyBarangay) {
 
             MyBarangayDialog(
@@ -563,11 +475,6 @@ fun ProfileScreen(
             )
         }
 
-
-        // =====================================================
-        // LOGOUT DIALOG
-        // =====================================================
-
         if (showLogout) {
 
             LogoutDialog(
@@ -576,19 +483,10 @@ fun ProfileScreen(
                 },
                 onLogout = {
 
-                    // -----------------------------------------
-                    // ACTUAL LOGOUT LOGIC WILL GO HERE
-                    // -----------------------------------------
-
                     showLogout = false
                 }
             )
         }
-
-
-        // =====================================================
-        // DELETE ACCOUNT DIALOG
-        // =====================================================
 
         if (showDeleteAccount) {
 
@@ -598,21 +496,12 @@ fun ProfileScreen(
                 },
                 onDelete = {
 
-                    // -----------------------------------------
-                    // ACTUAL DELETE ACCOUNT LOGIC WILL GO HERE
-                    // -----------------------------------------
-
                     showDeleteAccount = false
                 }
             )
         }
     }
 }
-
-
-// =========================================================
-// PROFILE OPTION CARD
-// =========================================================
 
 @Composable
 private fun ProfileOptionCard(
@@ -648,8 +537,6 @@ private fun ProfileOptionCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
 
-            // Icon box
-
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -669,8 +556,6 @@ private fun ProfileOptionCard(
             Spacer(
                 modifier = Modifier.size(13.dp)
             )
-
-            // Text
 
             Column(
                 modifier = Modifier.weight(1f)
@@ -698,8 +583,6 @@ private fun ProfileOptionCard(
             Spacer(
                 modifier = Modifier.size(8.dp)
             )
-
-            // Arrow
 
             Icon(
                 imageVector = Icons.Default.ArrowForwardIos,

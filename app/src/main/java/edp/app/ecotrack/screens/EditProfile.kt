@@ -77,8 +77,6 @@ fun EditProfileDialog(
                 .padding(18.dp)
         ) {
 
-            // Green line
-
             Spacer(
                 modifier = Modifier
                     .size(
@@ -94,8 +92,6 @@ fun EditProfileDialog(
             Spacer(
                 modifier = Modifier.height(14.dp)
             )
-
-            // Header
 
             Row(
                 verticalAlignment = Alignment.CenterVertically
@@ -142,8 +138,6 @@ fun EditProfileDialog(
             Spacer(
                 modifier = Modifier.height(10.dp)
             )
-
-            // Profile preview
 
             Row(
                 verticalAlignment = Alignment.CenterVertically

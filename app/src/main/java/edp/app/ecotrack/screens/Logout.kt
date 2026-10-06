@@ -99,8 +99,6 @@ fun LogoutDialog(
                     .size(8.dp)
             )
 
-            // Account information
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

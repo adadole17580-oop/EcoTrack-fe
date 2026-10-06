@@ -113,7 +113,6 @@ fun NewReportScreen(
             .verticalScroll(rememberScrollState())
     ) {
 
-        // Dark Green Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -183,7 +182,6 @@ fun NewReportScreen(
                 modifier = Modifier.height(10.dp)
             )
 
-            // Issue Type Grid (2x2)
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -281,7 +279,6 @@ fun NewReportScreen(
                 modifier = Modifier.height(20.dp)
             )
 
-            // Description Section
             Text(
                 text = "DESCRIPTION",
                 color = EcoDarkGreen,
@@ -317,7 +314,6 @@ fun NewReportScreen(
                 modifier = Modifier.height(20.dp)
             )
 
-            // Photo Upload Section (No green border)
             Text(
                 text = "ATTACH PHOTO",
                 color = EcoDarkGreen,

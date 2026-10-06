@@ -60,8 +60,6 @@ fun DeleteAccountDialog(
                 .padding(18.dp)
         ) {
 
-            // Top green line
-
             Spacer(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -75,8 +73,6 @@ fun DeleteAccountDialog(
             Spacer(
                 modifier = Modifier.height(16.dp)
             )
-
-            // Warning icon + title
 
             Row(
                 verticalAlignment = Alignment.CenterVertically
@@ -128,8 +124,6 @@ fun DeleteAccountDialog(
             Spacer(
                 modifier = Modifier.height(12.dp)
             )
-
-            // Warning message
 
             Text(
                 text = "⚠  Deleting your account cannot be undone.",

@@ -154,7 +154,6 @@ private fun NotificationHeader(
                     }
             )
 
-            // Bell button matching HomeScreen exactly
             Box {
                 IconButton(
                     onClick = { }
