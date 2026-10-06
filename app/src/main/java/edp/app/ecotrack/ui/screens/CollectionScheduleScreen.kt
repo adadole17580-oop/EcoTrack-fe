@@ -59,35 +59,35 @@ fun CollectionScheduleScreen() {
         CollectionDay(
             "Monday",
             "Sept 28",
-            "Barangay Bulua",
+            "Barangay Bulua – Zone 1",
             "Biodegradable",
             "8:00 – 10:00 AM"
         ),
         CollectionDay(
             "Tuesday",
             "Sept 29",
-            "Barangay Bulua",
+            "Barangay Bulua – Zone 2",
             "Recyclable",
             "9:00 – 11:00 AM"
         ),
         CollectionDay(
             "Wednesday",
             "Sept 30",
-            "Barangay Bulua",
+            "Barangay Bulua – Zone 3",
             "Non-Biodegradable",
             "8:30 – 10:30 AM"
         ),
         CollectionDay(
             "Thursday",
             "Oct 1",
-            "Barangay Bulua",
+            "Barangay Bulua – Zone 4",
             "Food Waste",
             "10:00 AM – 12:00 PM"
         ),
         CollectionDay(
             "Friday",
             "Oct 2",
-            "Barangay Bulua",
+            "Barangay Bulua – Zone 5",
             "Mixed Collection",
             "8:00 – 10:00 AM"
         )

@@ -1,7 +1,5 @@
 package edp.app.ecotrack.ui.screens
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -38,7 +35,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import edp.app.ecotrack.ui.theme.EcoGreen
 import edp.app.ecotrack.ui.theme.EcoGreenLight
@@ -55,9 +51,6 @@ private data class ChatMessage(
 fun ContactAdminScreen(
     onBack: () -> Unit
 ) {
-
-    val context = LocalContext.current
-
     var messageText by remember {
         mutableStateOf("")
     }
@@ -71,8 +64,6 @@ fun ContactAdminScreen(
         )
     }
 
-    val adminNumber = "09170000000"
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -80,9 +71,6 @@ fun ContactAdminScreen(
             .imePadding()
     ) {
 
-        /*
-         * HEADER
-         */
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -98,7 +86,6 @@ fun ContactAdminScreen(
             IconButton(
                 onClick = onBack
             ) {
-
                 Icon(
                     imageVector = Icons.Outlined.ArrowBack,
                     contentDescription = "Back",
@@ -109,7 +96,6 @@ fun ContactAdminScreen(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-
                 Text(
                     text = "Contact Admin",
                     style = MaterialTheme.typography.titleLarge,
@@ -123,30 +109,8 @@ fun ContactAdminScreen(
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
-
-            IconButton(
-                onClick = {
-
-                    val intent = Intent(
-                        Intent.ACTION_DIAL,
-                        Uri.parse("tel:$adminNumber")
-                    )
-
-                    context.startActivity(intent)
-                }
-            ) {
-
-                Icon(
-                    imageVector = Icons.Outlined.Call,
-                    contentDescription = "Call admin",
-                    tint = EcoGreen
-                )
-            }
         }
 
-        /*
-         * ADMIN INFO
-         */
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -174,12 +138,11 @@ fun ContactAdminScreen(
                     modifier = Modifier
                         .size(42.dp)
                         .background(
-                            color = EcoWhite,
-                            shape = CircleShape
+                            EcoWhite,
+                            CircleShape
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-
                     Text(
                         text = "A",
                         style = MaterialTheme.typography.titleMedium,
@@ -207,30 +170,22 @@ fun ContactAdminScreen(
             }
         }
 
-        /*
-         * CHAT
-         */
         LazyColumn(
             modifier = Modifier
-                .weight(1f)
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .weight(1f)
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 8.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
-            items(
-                items = messages
-            ) { chatMessage ->
-
-                ChatBubble(
-                    message = chatMessage
-                )
+            items(messages) { chatMessage ->
+                ChatBubble(chatMessage)
             }
         }
 
-        /*
-         * MESSAGE INPUT
-         */
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -248,9 +203,7 @@ fun ContactAdminScreen(
                 },
                 modifier = Modifier.weight(1f),
                 placeholder = {
-                    Text(
-                        text = "Type a message..."
-                    )
+                    Text("Type a message...")
                 },
                 maxLines = 4,
                 shape = RoundedCornerShape(16.dp)
@@ -262,9 +215,7 @@ fun ContactAdminScreen(
 
             IconButton(
                 onClick = {
-
                     if (messageText.isNotBlank()) {
-
                         messages.add(
                             ChatMessage(
                                 message = messageText.trim(),
@@ -278,11 +229,10 @@ fun ContactAdminScreen(
                 modifier = Modifier
                     .size(48.dp)
                     .background(
-                        color = EcoGreen,
-                        shape = CircleShape
+                        EcoGreen,
+                        CircleShape
                     )
             ) {
-
                 Icon(
                     imageVector = Icons.Outlined.Send,
                     contentDescription = "Send message",
@@ -295,12 +245,11 @@ fun ContactAdminScreen(
 
 @Composable
 private fun ChatBubble(
-    message: ChatMessage
+    chatMessage: ChatMessage
 ) {
-
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (message.fromCollector) {
+        horizontalArrangement = if (chatMessage.fromCollector) {
             Arrangement.End
         } else {
             Arrangement.Start
@@ -310,25 +259,12 @@ private fun ChatBubble(
         Box(
             modifier = Modifier
                 .background(
-                    color = if (message.fromCollector) {
+                    color = if (chatMessage.fromCollector) {
                         EcoGreen
                     } else {
                         EcoWhite
                     },
-                    shape = RoundedCornerShape(
-                        topStart = 16.dp,
-                        topEnd = 16.dp,
-                        bottomStart = if (message.fromCollector) {
-                            16.dp
-                        } else {
-                            4.dp
-                        },
-                        bottomEnd = if (message.fromCollector) {
-                            4.dp
-                        } else {
-                            16.dp
-                        }
-                    )
+                    shape = RoundedCornerShape(16.dp)
                 )
                 .padding(
                     horizontal = 14.dp,
@@ -337,13 +273,13 @@ private fun ChatBubble(
         ) {
 
             Text(
-                text = message.message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (message.fromCollector) {
+                text = chatMessage.message,
+                color = if (chatMessage.fromCollector) {
                     EcoWhite
                 } else {
                     EcoText
-                }
+                },
+                style = MaterialTheme.typography.bodyMedium
             )
         }
     }

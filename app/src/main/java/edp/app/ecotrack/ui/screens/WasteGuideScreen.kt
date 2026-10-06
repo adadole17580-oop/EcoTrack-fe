@@ -3,22 +3,27 @@ package edp.app.ecotrack.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.Recycling
-import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.LocalDining
+import androidx.compose.material.icons.filled.Recycling
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -31,169 +36,192 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import edp.app.ecotrack.ui.components.EcoTrackTopBar
-import edp.app.ecotrack.ui.theme.EcoGreen
-import edp.app.ecotrack.ui.theme.EcoGreenLight
-import edp.app.ecotrack.ui.theme.EcoSecondaryText
-import edp.app.ecotrack.ui.theme.EcoText
+import androidx.compose.ui.unit.sp
+import edp.app.ecotrack.ui.theme.EcoGreenDark
 import edp.app.ecotrack.ui.theme.EcoWhite
 import edp.app.ecotrack.ui.theme.WasteBiodegradable
-import edp.app.ecotrack.ui.theme.WasteBiodegradableText
 import edp.app.ecotrack.ui.theme.WasteHazardous
-import edp.app.ecotrack.ui.theme.WasteHazardousText
 import edp.app.ecotrack.ui.theme.WasteRecyclable
-import edp.app.ecotrack.ui.theme.WasteRecyclableText
 import edp.app.ecotrack.ui.theme.WasteResidual
-import edp.app.ecotrack.ui.theme.WasteResidualText
 
 private data class WasteCategory(
-    val title: String,
+    val name: String,
     val description: String,
     val examples: List<String>,
-    val backgroundColor: Color,
-    val textColor: Color
+    val instructions: List<String>,
+    val color: Color,
+    val icon: ImageVector
 )
 
 @Composable
 fun WasteGuideScreen() {
 
-    val categories = listOf(
-        WasteCategory(
-            title = "Biodegradable",
-            description = "Waste that naturally breaks down over time.",
-            examples = listOf(
-                "Fruit and vegetable peels",
-                "Leftover food",
-                "Leaves and grass",
-                "Other organic waste"
+    val wasteCategories = remember {
+        listOf(
+            WasteCategory(
+                name = "Biodegradable",
+                description = "Waste that naturally breaks down and can be composted.",
+                examples = listOf(
+                    "Food scraps & kitchen leftovers",
+                    "Fruit and vegetable peels",
+                    "Leaves, grass & garden waste",
+                    "Coffee grounds & tea bags",
+                    "Eggshells & organic paper"
+                ),
+                instructions = listOf(
+                    "Place food and plant waste in the biodegradable bin.",
+                    "Remove plastic, glass, and other non-biodegradable materials.",
+                    "Use biodegradable waste for composting when possible."
+                ),
+                color = WasteBiodegradable,
+                icon = Icons.Default.LocalDining
             ),
-            backgroundColor = WasteBiodegradable,
-            textColor = WasteBiodegradableText
-        ),
-        WasteCategory(
-            title = "Recyclable",
-            description = "Materials that can be collected and processed for reuse.",
-            examples = listOf(
-                "Plastic bottles",
-                "Clean paper and cardboard",
-                "Glass containers",
-                "Metal cans"
+            WasteCategory(
+                name = "Recyclable",
+                description = "Materials that can be processed and used to make new products.",
+                examples = listOf(
+                    "Paper, newspapers & cardboard boxes",
+                    "Plastic bottles & containers",
+                    "Glass bottles and jars",
+                    "Metal cans & aluminum foil",
+                    "Clean plastic packaging"
+                ),
+                instructions = listOf(
+                    "Clean and dry recyclable materials before disposal.",
+                    "Separate recyclable materials from food waste.",
+                    "Place recyclable items in the designated recycling bin."
+                ),
+                color = WasteRecyclable,
+                icon = Icons.Default.Recycling
             ),
-            backgroundColor = WasteRecyclable,
-            textColor = WasteRecyclableText
-        ),
-        WasteCategory(
-            title = "Non-Biodegradable",
-            description = "Waste that does not easily decompose naturally.",
-            examples = listOf(
-                "Plastic wrappers",
-                "Styrofoam",
-                "Used packaging",
-                "Other residual waste"
+            WasteCategory(
+                name = "Residual",
+                description = "Waste that cannot be composted or economically recycled.",
+                examples = listOf(
+                    "Used tissues & sanitary products",
+                    "Soiled food packaging",
+                    "Styrofoam containers",
+                    "Contaminated plastic wrappers",
+                    "Single-use non-recyclable items"
+                ),
+                instructions = listOf(
+                    "Make sure the waste cannot be recycled or composted.",
+                    "Place residual waste in the designated residual bin.",
+                    "Keep residual waste separate from recyclable materials."
+                ),
+                color = WasteResidual,
+                icon = Icons.Default.DeleteOutline
             ),
-            backgroundColor = WasteResidual,
-            textColor = WasteResidualText
-        ),
-        WasteCategory(
-            title = "Hazardous",
-            description = "Waste that may be harmful and needs special handling.",
-            examples = listOf(
-                "Batteries",
-                "Chemical containers",
-                "Broken fluorescent bulbs",
-                "Other hazardous materials"
-            ),
-            backgroundColor = WasteHazardous,
-            textColor = WasteHazardousText
+            WasteCategory(
+                name = "Hazardous",
+                description = "Waste that may be harmful to people or the environment.",
+                examples = listOf(
+                    "Household batteries & electronics",
+                    "Chemical containers & pesticides",
+                    "Paint materials & thinners",
+                    "Expired medications",
+                    "Fluorescent light bulbs"
+                ),
+                instructions = listOf(
+                    "Do not mix hazardous waste with regular household waste.",
+                    "Keep hazardous materials in a safe and secure place.",
+                    "Bring hazardous waste to an appropriate collection facility."
+                ),
+                color = WasteHazardous,
+                icon = Icons.Default.Warning
+            )
         )
-    )
+    }
 
     var expandedCategory by remember {
         mutableStateOf<String?>(null)
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize()
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
 
-        EcoTrackTopBar(
-            title = "Waste Guide",
-            subtitle = "Know where each type of waste belongs"
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = EcoGreenLight
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 1.dp
-                )
-            ) {
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    Icon(
-                        imageVector = Icons.Outlined.Recycling,
-                        contentDescription = "Waste guide",
-                        tint = EcoGreen,
-                        modifier = Modifier.size(28.dp)
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(EcoGreenDark)
+                    .padding(
+                        start = 24.dp,
+                        end = 24.dp,
+                        top = 32.dp,
+                        bottom = 24.dp
                     )
+            ) {
+                Text(
+                    text = "Waste Guide",
+                    color = Color.White,
+                    style = MaterialTheme.typography.headlineMedium
+                )
 
-                    Column(
-                        modifier = Modifier.padding(start = 12.dp)
-                    ) {
+                Spacer(
+                    modifier = Modifier.height(5.dp)
+                )
 
-                        Text(
-                            text = "Proper segregation matters",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = EcoText
-                        )
-
-                        Text(
-                            text = "Tap a category to see common examples.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = EcoSecondaryText,
-                            modifier = Modifier.padding(top = 3.dp)
-                        )
-                    }
-                }
+                Text(
+                    text = "Learn how to properly segregate and dispose of different types of waste.",
+                    color = Color.White.copy(alpha = 0.8f),
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
+        }
 
-            categories.forEach { category ->
+        item {
+            Spacer(
+                modifier = Modifier.height(4.dp)
+            )
+        }
 
+        item {
+            Text(
+                text = "HOW TO SEGREGATE YOUR WASTE",
+                modifier = Modifier.padding(horizontal = 24.dp),
+                color = EcoGreenDark,
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+
+        items(
+            items = wasteCategories,
+            key = {
+                it.name
+            }
+        ) { category ->
+
+            Box(
+                modifier = Modifier.padding(horizontal = 24.dp)
+            ) {
                 WasteCategoryCard(
                     category = category,
-                    expanded = expandedCategory == category.title,
+                    expanded = expandedCategory == category.name,
                     onClick = {
                         expandedCategory =
-                            if (expandedCategory == category.title) {
+                            if (expandedCategory == category.name) {
                                 null
                             } else {
-                                category.title
+                                category.name
                             }
                     }
                 )
             }
+        }
 
+        item {
             Spacer(
-                modifier = Modifier.size(8.dp)
+                modifier = Modifier.height(24.dp)
             )
         }
     }
@@ -205,12 +233,13 @@ private fun WasteCategoryCard(
     expanded: Boolean,
     onClick: () -> Unit
 ) {
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+            .clickable {
+                onClick()
+            },
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
             containerColor = EcoWhite
         ),
@@ -218,113 +247,177 @@ private fun WasteCategoryCard(
             defaultElevation = 2.dp
         )
     ) {
-
         Column(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.padding(16.dp)
         ) {
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(15.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(category.color),
+                    contentAlignment = Alignment.Center
                 ) {
-
                     Icon(
-                        imageVector = when (category.title) {
-                            "Recyclable" -> Icons.Outlined.Recycling
-                            "Hazardous" -> Icons.Outlined.WarningAmber
-                            else -> Icons.Outlined.DeleteOutline
-                        },
-                        contentDescription = category.title,
-                        tint = category.textColor,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .background(
-                                color = category.backgroundColor,
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .padding(4.dp)
+                        imageVector = category.icon,
+                        contentDescription = category.name,
+                        tint = Color.White,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+
+                Spacer(
+                    modifier = Modifier.width(14.dp)
+                )
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = category.name,
+                        color = EcoGreenDark,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
 
-                    Column(
-                        modifier = Modifier.padding(start = 12.dp)
-                    ) {
+                    Spacer(
+                        modifier = Modifier.height(3.dp)
+                    )
 
-                        Text(
-                            text = category.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = EcoText
-                        )
-
-                        Text(
-                            text = category.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = EcoSecondaryText,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
+                    Text(
+                        text = category.description,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
+
+                Spacer(
+                    modifier = Modifier.width(8.dp)
+                )
 
                 Icon(
                     imageVector = if (expanded) {
-                        Icons.Outlined.ExpandLess
+                        Icons.Default.ExpandLess
                     } else {
-                        Icons.Outlined.ExpandMore
+                        Icons.Default.ExpandMore
                     },
                     contentDescription = if (expanded) {
                         "Collapse"
                     } else {
                         "Expand"
                     },
-                    tint = EcoSecondaryText,
-                    modifier = Modifier.size(22.dp)
+                    tint = EcoGreenDark,
+                    modifier = Modifier.size(26.dp)
                 )
             }
 
             if (expanded) {
 
-                Column(
+                Spacer(
+                    modifier = Modifier.height(16.dp)
+                )
+
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(category.backgroundColor.copy(alpha = 0.45f))
-                        .padding(
-                            start = 18.dp,
-                            end = 18.dp,
-                            top = 12.dp,
-                            bottom = 15.dp
-                        ),
-                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                        .height(1.dp)
+                        .background(Color(0xFFE5E5E5))
+                )
+
+                Spacer(
+                    modifier = Modifier.height(16.dp)
+                )
+
+                Text(
+                    text = "Examples",
+                    color = EcoGreenDark,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(
+                    modifier = Modifier.height(8.dp)
+                )
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-
-                    Text(
-                        text = "Common examples",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = category.textColor
-                    )
-
                     category.examples.forEach { example ->
 
                         Row(
+                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-
                             Text(
                                 text = "•",
-                                color = category.textColor,
-                                style = MaterialTheme.typography.bodyMedium
+                                color = EcoGreenDark,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.width(16.dp)
                             )
 
                             Text(
                                 text = example,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+
+                Spacer(
+                    modifier = Modifier.height(18.dp)
+                )
+
+                Text(
+                    text = "How to dispose",
+                    color = EcoGreenDark,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(
+                    modifier = Modifier.height(10.dp)
+                )
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    category.instructions.forEachIndexed { index, instruction ->
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .clip(CircleShape)
+                                    .background(category.color),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "${index + 1}",
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Spacer(
+                                modifier = Modifier.width(10.dp)
+                            )
+
+                            Text(
+                                text = instruction,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = EcoText,
-                                modifier = Modifier.padding(start = 8.dp)
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }
