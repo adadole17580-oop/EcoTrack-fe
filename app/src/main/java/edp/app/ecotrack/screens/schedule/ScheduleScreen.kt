@@ -1714,6 +1714,11 @@ private fun DeleteScheduleConfirmation(
 
     AlertDialog(
 
+        // SAME DIMENSION AS COLLECTOR DELETE POPUP
+        modifier = Modifier
+            .width(480.dp)
+            .height(220.dp),
+
         onDismissRequest = onDismiss,
 
         containerColor = White,
@@ -1721,27 +1726,24 @@ private fun DeleteScheduleConfirmation(
         shape = RoundedCornerShape(18.dp),
 
         title = {
+            Column {
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = DeleteRed,
-                    modifier = Modifier.size(24.dp)
+                Text(
+                    text = "${schedule.id} - ${schedule.barangayArea}",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DeleteRed
                 )
 
                 Spacer(
-                    modifier = Modifier.width(10.dp)
+                    modifier = Modifier.height(5.dp)
                 )
 
                 Text(
                     text = "Delete Schedule",
-                    color = TextGreen,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextGreen
                 )
             }
         },
@@ -1753,85 +1755,78 @@ private fun DeleteScheduleConfirmation(
                 Text(
                     text = "Are you sure you want to delete this schedule?",
                     color = Color(0xFF5D6F61),
-                    fontSize = 11.sp
+                    fontSize = 12.sp
                 )
 
-                Spacer(
-                    modifier = Modifier.height(8.dp)
-                )
-
-                Text(
-                    text = schedule.id,
-                    color = EcoGreen,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Text(
-                    text = schedule.barangayArea,
-                    color = TextGreen,
-                    fontSize = 10.sp
-                )
             }
         },
 
         confirmButton = {
-
-            Button(
-                onClick = onConfirm,
-
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DeleteRed
-                ),
-
-                shape = RoundedCornerShape(20.dp),
-
-                modifier = Modifier.height(36.dp),
-
-                contentPadding = PaddingValues(
-                    horizontal = 18.dp
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
 
-                Text(
-                    text = "Delete",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
+                Button(
+                    onClick = onDismiss,
+
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = White,
+                        contentColor = EcoGreen
+                    ),
+
+                    border = androidx.compose.foundation.BorderStroke(
+                        width = 1.dp,
+                        color = EcoGreen
+                    ),
+
+                    shape = RoundedCornerShape(20.dp),
+
+                    modifier = Modifier.height(36.dp),
+
+                    contentPadding = PaddingValues(
+                        horizontal = 82.dp
+                    )
+                ) {
+
+                    Text(
+                        text = "Cancel",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(
+                    modifier = Modifier.width(10.dp)
                 )
+
+                Button(
+                    onClick = onConfirm,
+
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DeleteRed
+                    ),
+
+                    shape = RoundedCornerShape(20.dp),
+
+                    modifier = Modifier.height(36.dp),
+
+                    contentPadding = PaddingValues(
+                        horizontal = 82.dp
+                    )
+                ) {
+
+                    Text(
+                        text = "Delete",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         },
 
-        dismissButton = {
-
-            Button(
-                onClick = onDismiss,
-
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = White,
-                    contentColor = EcoGreen
-                ),
-
-                border = androidx.compose.foundation.BorderStroke(
-                    width = 1.dp,
-                    color = EcoGreen
-                ),
-
-                shape = RoundedCornerShape(20.dp),
-
-                modifier = Modifier.height(36.dp),
-
-                contentPadding = PaddingValues(
-                    horizontal = 18.dp
-                )
-            ) {
-
-                Text(
-                    text = "Cancel",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
+        dismissButton = {}
     )
 }
 
@@ -1975,7 +1970,6 @@ private fun ScheduleDropdown(
         mutableStateOf(false)
     }
 
-
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -2030,7 +2024,6 @@ private fun ScheduleDropdown(
                 )
             }
         }
-
 
         if (expanded) {
 

@@ -1528,8 +1528,8 @@ private fun DeleteCollectorDialog(
             Column {
 
                 Text(
-                    text = "${collector.collectorId} - DELETE",
-                    fontSize = 11.sp,
+                    text = "${collector.collectorId}",
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = Red
                 )
@@ -1552,7 +1552,7 @@ private fun DeleteCollectorDialog(
             Text(
                 text = "Are you sure you want to delete ${collector.fullName}? This action cannot be undone.",
                 fontSize = 12.sp,
-                color = TextGreen
+                color = EcoGreen
             )
         },
 
@@ -1596,7 +1596,7 @@ private fun DeleteCollectorDialog(
 
                     Text(
                         text = "Cancel",
-                        fontSize = 10.sp
+                        fontSize = 12.sp
                     )
                 }
 
@@ -1618,7 +1618,7 @@ private fun DeleteCollectorDialog(
 
                     Text(
                         text = "Delete",
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
