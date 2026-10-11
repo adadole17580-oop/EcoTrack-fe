@@ -25,9 +25,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.ChatBubbleOutline
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -66,15 +70,249 @@ data class BarangayMessage(
 fun ContactBarangayDialog(
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+    val barangayPhoneNumber = "0888801234"
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
-            usePlatformDefaultWidth = false
+            dismissOnClickOutside = true
         )
     ) {
-        ContactBarangayScreen(
-            onBack = onDismiss
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Color.White,
+                    RoundedCornerShape(18.dp)
+                )
+                .padding(22.dp)
+        ) {
+
+            // Top indicator line
+            Spacer(
+                modifier = Modifier
+                    .size(
+                        width = 44.dp,
+                        height = 4.dp
+                    )
+                    .background(
+                        EcoGreen,
+                        RoundedCornerShape(50)
+                    )
+            )
+
+            Spacer(
+                modifier = Modifier.height(20.dp)
+            )
+
+            // Header
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Column(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(
+                            EcoLightGreen,
+                            RoundedCornerShape(50)
+                        ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+
+                    Icon(
+                        imageVector = Icons.Default.Phone,
+                        contentDescription = "Phone",
+                        tint = EcoDarkGreen,
+                        modifier = Modifier.size(23.dp)
+                    )
+                }
+
+                Spacer(
+                    modifier = Modifier.size(12.dp)
+                )
+
+                Column {
+
+                    Text(
+                        text = "Contact Barangay Hall",
+                        color = EcoDarkGreen,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(
+                        modifier = Modifier.height(3.dp)
+                    )
+
+                    Text(
+                        text = "Get help with local services and community concerns.",
+                        color = EcoTextGreen,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            Spacer(
+                modifier = Modifier.height(18.dp)
+            )
+
+            // Contact Info Container
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        EcoLightGreen,
+                        RoundedCornerShape(12.dp)
+                    )
+                    .padding(16.dp)
+            ) {
+
+                Text(
+                    text = "Barangay Bulua Hall",
+                    color = EcoDarkGreen,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(
+                    modifier = Modifier.height(8.dp)
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = "Location",
+                        tint = EcoGreen,
+                        modifier = Modifier.size(16.dp)
+                    )
+
+                    Spacer(
+                        modifier = Modifier.width(6.dp)
+                    )
+
+                    Text(
+                        text = "Zone 7, Bulua, Cagayan de Oro City",
+                        color = EcoTextGreen,
+                        fontSize = 11.sp
+                    )
+                }
+
+                Spacer(
+                    modifier = Modifier.height(6.dp)
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Icon(
+                        imageVector = Icons.Default.Call,
+                        contentDescription = "Phone",
+                        tint = EcoGreen,
+                        modifier = Modifier.size(16.dp)
+                    )
+
+                    Spacer(
+                        modifier = Modifier.width(6.dp)
+                    )
+
+                    Text(
+                        text = "(088) 880 1234",
+                        color = EcoDarkGreen,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(
+                    modifier = Modifier.height(6.dp)
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = "Hours",
+                        tint = EcoGreen,
+                        modifier = Modifier.size(16.dp)
+                    )
+
+                    Spacer(
+                        modifier = Modifier.width(6.dp)
+                    )
+
+                    Text(
+                        text = "Mon - Fri, 8:00 AM - 5:00 PM",
+                        color = EcoTextGreen,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+
+            Spacer(
+                modifier = Modifier.height(20.dp)
+            )
+
+            // Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.White,
+                        contentColor = EcoDarkGreen
+                    ),
+                    shape = RoundedCornerShape(9.dp)
+                ) {
+
+                    Text(
+                        text = "Close"
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        val intent = Intent(
+                            Intent.ACTION_DIAL,
+                            Uri.parse("tel:$barangayPhoneNumber")
+                        )
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = EcoDarkGreen
+                    ),
+                    shape = RoundedCornerShape(9.dp)
+                ) {
+
+                    Icon(
+                        imageVector = Icons.Default.Call,
+                        contentDescription = "Call",
+                        modifier = Modifier.size(16.dp)
+                    )
+
+                    Spacer(
+                        modifier = Modifier.width(6.dp)
+                    )
+
+                    Text(
+                        text = "Call Now"
+                    )
+                }
+            }
+        }
     }
 }
 

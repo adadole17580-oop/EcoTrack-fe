@@ -154,6 +154,7 @@ private fun NotificationHeader(
                     }
             )
 
+
             Box {
                 IconButton(
                     onClick = { }
@@ -207,7 +208,7 @@ private fun NotificationHeader(
 private fun CollectionNotification() {
 
     NotificationCard(
-        backgroundColor = EcoPaleGreen
+        backgroundColor = MaterialTheme.colorScheme.surfaceVariant
     ) {
 
         NotificationTitleRow(
@@ -245,7 +246,7 @@ private fun CollectionNotification() {
 private fun ResolvedNotification() {
 
     NotificationCard(
-        backgroundColor = EcoWhite
+        backgroundColor = MaterialTheme.colorScheme.surface
     ) {
 
         NotificationTitleRow(
@@ -277,7 +278,7 @@ private fun ResolvedNotification() {
 private fun InProgressNotification() {
 
     NotificationCard(
-        backgroundColor = EcoWhite
+        backgroundColor = MaterialTheme.colorScheme.surface
     ) {
 
         NotificationTitleRow(
@@ -354,7 +355,7 @@ private fun NotificationTitleRow(
 
         Text(
             text = title,
-            color = EcoDarkGreen,
+            color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f)
@@ -394,7 +395,7 @@ private fun NotificationBottomRow(
 
         Text(
             text = time,
-            color = EcoGray,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.weight(1f)
         )
@@ -443,7 +444,7 @@ private fun PreviousNotificationsButton() {
 
         Text(
             text = "See previous notifications",
-            color = EcoDarkGreen,
+            color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium
         )

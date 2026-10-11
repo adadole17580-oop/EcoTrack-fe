@@ -100,7 +100,7 @@ fun ProfileScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(EcoLightGreen)
+            .background(MaterialTheme.colorScheme.background)
     ) {
 
         Row(
@@ -178,7 +178,7 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface
                 ),
                 elevation = CardDefaults.cardElevation(
                     defaultElevation = 2.dp
@@ -510,7 +510,7 @@ private fun ProfileOptionCard(
     description: String,
     iconBgColor: Color = EcoLightGreen,
     iconTint: Color = EcoDarkGreen,
-    titleColor: Color = EcoDarkGreen,
+    titleColor: Color = MaterialTheme.colorScheme.onSurface,
     arrowTint: Color = EcoTextGreen,
     onClick: () -> Unit
 ) {
@@ -523,7 +523,7 @@ private fun ProfileOptionCard(
             },
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = 1.dp
