@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.BarChart
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -57,6 +59,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -91,6 +94,10 @@ private val ProgressText = Color(0xFF39924A)
 
 private val ResolvedBackground = Color(0xFFC5DEC9)
 private val ResolvedText = Color(0xFF3C8550)
+
+// SEARCH BAR COLORS — SAME AS WASTE REPORT
+private val SearchBackground = Color(0xFFE9F5EC)
+private val SearchBorder = Color(0xFF8BE5A7)
 
 // ============================================================
 // ADMIN INFORMATION
@@ -191,6 +198,35 @@ fun ResidentsScreen(
                 status = "Inactive"
             )
         )
+    }
+
+    // ========================================================
+    // SEARCH STATE
+    // ========================================================
+
+    var searchText by remember {
+        mutableStateOf("")
+    }
+
+    val filteredResidents = residents.filter { resident ->
+
+        searchText.isBlank() ||
+                resident.name.contains(
+                    searchText,
+                    ignoreCase = true
+                ) ||
+                resident.residentId.contains(
+                    searchText,
+                    ignoreCase = true
+                ) ||
+                resident.barangay.contains(
+                    searchText,
+                    ignoreCase = true
+                ) ||
+                resident.phone.contains(
+                    searchText,
+                    ignoreCase = true
+                )
     }
 
     // ========================================================
@@ -512,7 +548,81 @@ fun ResidentsScreen(
                 )
 
                 Spacer(
-                    modifier = Modifier.height(31.dp)
+                    modifier = Modifier.height(20.dp)
+                )
+
+                // =================================================
+                // SEARCH BAR
+                // SAME STYLE AND SIZE AS WASTE REPORT
+                // =================================================
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Row(
+                        modifier = Modifier
+                            .width(180.dp)
+                            .height(28.dp)
+                            .background(
+                                color = SearchBackground,
+                                shape = RoundedCornerShape(15.dp)
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = SearchBorder,
+                                shape = RoundedCornerShape(15.dp)
+                            )
+                            .padding(horizontal = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = EcoGreen,
+                            modifier = Modifier.size(14.dp)
+                        )
+
+                        Spacer(
+                            modifier = Modifier.width(5.dp)
+                        )
+
+                        BasicTextField(
+                            value = searchText,
+                            onValueChange = {
+                                searchText = it
+                            },
+                            singleLine = true,
+                            textStyle = TextStyle(
+                                fontSize = 12.sp,
+                                color = TextGreen
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            decorationBox = { innerTextField ->
+
+                                Box {
+
+                                    if (searchText.isEmpty()) {
+
+                                        Text(
+                                            text = "Search residents...",
+                                            fontSize = 12.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
+
+                                    innerTextField()
+                                }
+                            }
+                        )
+                    }
+                }
+
+                Spacer(
+                    modifier = Modifier.height(12.dp)
                 )
 
                 // =================================================
@@ -545,7 +655,7 @@ fun ResidentsScreen(
                         ) {
 
                             items(
-                                items = residents,
+                                items = filteredResidents,
                                 key = {
                                     it.residentId
                                 }
@@ -715,6 +825,7 @@ private fun RowScope.ResidentHeaderText(
     text: String,
     weight: Float
 ) {
+
     Text(
         text = text,
         color = TextGreen,
@@ -725,7 +836,6 @@ private fun RowScope.ResidentHeaderText(
             .padding(end = 4.dp)
     )
 }
-
 
 // ============================================================
 // RESIDENT ROW

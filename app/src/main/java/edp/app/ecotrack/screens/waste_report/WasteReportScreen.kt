@@ -146,6 +146,10 @@ fun WasteReportScreen(
         mutableStateOf("")
     }
 
+    var reports by remember {
+        mutableStateOf(sampleWasteReports)
+    }
+
     var selectedReviewReport by remember {
         mutableStateOf<WasteReport?>(null)
     }
@@ -162,7 +166,7 @@ fun WasteReportScreen(
     // FILTER REPORTS
     // =====================================================
 
-    val filteredReports = sampleWasteReports.filter { report ->
+    val filteredReports = reports.filter { report ->
 
         val matchesFilter =
             selectedFilter == "All" ||
@@ -369,11 +373,17 @@ fun WasteReportScreen(
                 selectedReviewReport = null
             },
 
-            onRejectProof = {
-                selectedReviewReport = null
-            },
-
             onApproveReport = {
+                reports = reports.map { currentReport ->
+                    if (currentReport.reportId == report.reportId) {
+                        currentReport.copy(
+                            status = "Resolved"
+                        )
+                    } else {
+                        currentReport
+                    }
+                }
+
                 selectedReviewReport = null
             }
         )
@@ -393,6 +403,18 @@ fun WasteReportScreen(
             },
 
             onAssignCollector = { collector ->
+
+                reports = reports.map { currentReport ->
+                    if (currentReport.reportId == report.reportId) {
+                        currentReport.copy(
+                            assignedTo = collector.name,
+                            status = "In Progress"
+                        )
+                    } else {
+                        currentReport
+                    }
+                }
+
                 selectedAssignReport = null
             }
         )
@@ -1044,18 +1066,7 @@ private fun WasteReportRow(
 
             when (report.status) {
 
-                "For Verification" -> {
-
-                    ActionButton(
-                        text = "Review",
-                        backgroundColor = Color(0xFFFF5B0A),
-                        textColor = White,
-                        onClick = onReviewClick
-                    )
-                }
-
-                "In Progress" -> {
-
+                "Pending" -> {
                     ActionButton(
                         text = "Assign",
                         backgroundColor = EcoGreen,
@@ -1064,8 +1075,36 @@ private fun WasteReportRow(
                     )
                 }
 
-                else -> {
+                "In Progress" -> {
+                    ActionButton(
+                        text = "View",
+                        backgroundColor = White,
+                        textColor = EcoGreen,
+                        borderColor = EcoGreen,
+                        onClick = onViewClick
+                    )
+                }
 
+                "For Verification" -> {
+                    ActionButton(
+                        text = "Review",
+                        backgroundColor = Color(0xFFFF5B0A),
+                        textColor = White,
+                        onClick = onReviewClick
+                    )
+                }
+
+                "Resolved" -> {
+                    ActionButton(
+                        text = "View",
+                        backgroundColor = White,
+                        textColor = EcoGreen,
+                        borderColor = EcoGreen,
+                        onClick = onViewClick
+                    )
+                }
+
+                else -> {
                     ActionButton(
                         text = "View",
                         backgroundColor = White,
