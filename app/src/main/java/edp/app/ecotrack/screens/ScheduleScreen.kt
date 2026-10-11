@@ -143,7 +143,6 @@ fun ScheduleScreen(
     val yearMonth = YearMonth.of(currentYear, currentMonth)
     val totalDays = yearMonth.lengthOfMonth()
 
-    // Clamp selectedDay if month length changes
     if (selectedDay > totalDays) {
         selectedDay = totalDays
     }
@@ -156,10 +155,6 @@ fun ScheduleScreen(
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
     ) {
-
-        // =====================================================
-        // HEADER
-        // =====================================================
 
         Column(
             modifier = Modifier
@@ -193,10 +188,6 @@ fun ScheduleScreen(
         Spacer(
             modifier = Modifier.height(20.dp)
         )
-
-        // =====================================================
-        // COLLECTION REMINDERS BOX (Preserved)
-        // =====================================================
 
         Card(
             modifier = Modifier
@@ -267,10 +258,6 @@ fun ScheduleScreen(
             modifier = Modifier.height(20.dp)
         )
 
-        // =====================================================
-        // INTERACTIVE GOOGLE CALENDAR MONTH VIEW
-        // =====================================================
-
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -287,8 +274,6 @@ fun ScheduleScreen(
             Column(
                 modifier = Modifier.padding(16.dp)
             ) {
-
-                // Month / Year Navigation Header Bar
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -350,7 +335,6 @@ fun ScheduleScreen(
                             modifier = Modifier.width(4.dp)
                         )
 
-                        // Previous Month Button
                         IconButton(
                             onClick = {
                                 if (currentMonth == 1) {
@@ -370,7 +354,6 @@ fun ScheduleScreen(
                             )
                         }
 
-                        // Next Month Button
                         IconButton(
                             onClick = {
                                 if (currentMonth == 12) {
@@ -396,8 +379,6 @@ fun ScheduleScreen(
                     modifier = Modifier.height(14.dp)
                 )
 
-                // Days of Week Header (SUN, MON, TUE, WED, THU, FRI, SAT)
-
                 val daysOfWeek = listOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
 
                 Row(
@@ -420,8 +401,6 @@ fun ScheduleScreen(
                 Spacer(
                     modifier = Modifier.height(10.dp)
                 )
-
-                // Month Calendar Grid Calculation
 
                 val firstDayOfWeek = yearMonth.atDay(1).dayOfWeek
                 val firstDayOffset = when (firstDayOfWeek) {
@@ -514,8 +493,6 @@ fun ScheduleScreen(
                                             modifier = Modifier.height(2.dp)
                                         )
 
-                                        // Badge Dot for Collection Event
-
                                         if (event != null) {
 
                                             Box(
@@ -556,10 +533,6 @@ fun ScheduleScreen(
             modifier = Modifier.height(22.dp)
         )
 
-        // =====================================================
-        // SELECTED DATE AGENDA / EVENT CARD
-        // =====================================================
-
         Text(
             text = "${monthNames[currentMonth - 1].uppercase()} $selectedDay, $currentYear SCHEDULE",
             modifier = Modifier.padding(horizontal = 20.dp),
@@ -590,8 +563,6 @@ fun ScheduleScreen(
                 Row(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-
-                    // Colored Left Vertical Accent Strip
 
                     Box(
                         modifier = Modifier

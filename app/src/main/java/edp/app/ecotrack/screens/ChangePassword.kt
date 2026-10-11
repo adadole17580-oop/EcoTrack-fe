@@ -82,7 +82,6 @@ fun ChangePasswordDialog(
                 .padding(22.dp)
         ) {
 
-            // Green top line
             Spacer(
                 modifier = Modifier
                     .size(

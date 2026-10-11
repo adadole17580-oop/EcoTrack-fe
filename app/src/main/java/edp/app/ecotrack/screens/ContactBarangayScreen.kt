@@ -89,7 +89,6 @@ fun ContactBarangayDialog(
                 .padding(22.dp)
         ) {
 
-            // Top indicator line
             Spacer(
                 modifier = Modifier
                     .size(
@@ -106,7 +105,6 @@ fun ContactBarangayDialog(
                 modifier = Modifier.height(20.dp)
             )
 
-            // Header
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -159,7 +157,6 @@ fun ContactBarangayDialog(
                 modifier = Modifier.height(18.dp)
             )
 
-            // Contact Info Container
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -261,7 +258,6 @@ fun ContactBarangayDialog(
                 modifier = Modifier.height(20.dp)
             )
 
-            // Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)

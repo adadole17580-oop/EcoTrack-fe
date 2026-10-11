@@ -274,7 +274,6 @@ fun MyBarangayDialog(
 
                 Button(
                     onClick = {
-                        // Details screen can be connected later
                     },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
