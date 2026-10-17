@@ -10,6 +10,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -20,6 +21,8 @@ import androidx.compose.ui.unit.sp
 import edp.app.ecotrack.components.auth.AuthButton
 import edp.app.ecotrack.components.auth.AuthPage
 import edp.app.ecotrack.components.auth.AuthTextField
+import edp.app.ecotrack.network.ApiClient
+import kotlinx.coroutines.launch
 
 @Composable
 fun RegisterScreen(
@@ -34,6 +37,9 @@ fun RegisterScreen(
     var acceptedTerms by rememberSaveable { mutableStateOf(false) }
     var message by rememberSaveable { mutableStateOf("") }
     var isError by rememberSaveable { mutableStateOf(true) }
+    var isLoading by rememberSaveable { mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope()
 
     AuthPage(
         title = "Create your Account",
@@ -50,7 +56,9 @@ fun RegisterScreen(
         AuthTextField(
             label = "Mobile Number",
             value = mobile,
-            onValueChange = { mobile = it.filter(Char::isDigit).take(15) },
+            onValueChange = {
+                mobile = it.filter(Char::isDigit).take(15)
+            },
             placeholder = "Enter mobile number",
             keyboardType = KeyboardType.Phone
         )
@@ -64,10 +72,10 @@ fun RegisterScreen(
         )
 
         AuthTextField(
-            label = "Address",
+            label = "Barangay",
             value = address,
             onValueChange = { address = it },
-            placeholder = "Enter address"
+            placeholder = "Enter your barangay"
         )
 
         AuthTextField(
@@ -110,49 +118,79 @@ fun RegisterScreen(
         }
 
         AuthButton(
-            text = "Create Account",
+            text = if (isLoading) "Creating Account..." else "Create Account",
             onClick = {
-                when {
-                    fullName.isBlank() ->
-                        message = "Please enter your full name."
-
-                    mobile.isBlank() ->
-                        message = "Please enter your mobile number."
-
-                    email.isBlank() ->
-                        message = "Please enter your email address."
-
-                    !Patterns.EMAIL_ADDRESS.matcher(email).matches() ->
-                        message = "Please enter a valid email address."
-
-                    address.isBlank() ->
-                        message = "Please enter your address."
-
-                    password.length < 8 ->
-                        message = "Password must be at least 8 characters."
-
-                    password != confirmPassword ->
-                        message = "Passwords do not match."
-
-                    !acceptedTerms ->
-                        message = "Please confirm the information above."
-
-                    else -> {
-                        message = "Registration is ready for backend integration."
-                        isError = false
-                    }
+                if (isLoading) {
+                    return@AuthButton
                 }
 
-                if (
-                    fullName.isBlank() ||
-                    mobile.isBlank() ||
-                    !Patterns.EMAIL_ADDRESS.matcher(email).matches() ||
-                    address.isBlank() ||
-                    password.length < 8 ||
-                    password != confirmPassword ||
-                    !acceptedTerms
-                ) {
-                    isError = true
+                message = ""
+                isError = true
+
+                when {
+                    fullName.isBlank() -> {
+                        message = "Please enter your full name."
+                    }
+
+                    mobile.isBlank() -> {
+                        message = "Please enter your mobile number."
+                    }
+
+                    email.isBlank() -> {
+                        message = "Please enter your email address."
+                    }
+
+                    !Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() -> {
+                        message = "Please enter a valid email address."
+                    }
+
+                    address.isBlank() -> {
+                        message = "Please enter your barangay."
+                    }
+
+                    password.length < 8 -> {
+                        message = "Password must be at least 8 characters."
+                    }
+
+                    password != confirmPassword -> {
+                        message = "Passwords do not match."
+                    }
+
+                    !acceptedTerms -> {
+                        message = "Please confirm the information above."
+                    }
+
+                    else -> {
+                        coroutineScope.launch {
+                            isLoading = true
+
+                            try {
+                                val result = ApiClient.register(
+                                    fullName = fullName,
+                                    email = email.trim(),
+                                    password = password,
+                                    phone = mobile,
+                                    barangay = address
+                                )
+
+                                message = result.optString(
+                                    "message",
+                                    "Account created successfully."
+                                )
+
+                                isError = false
+                                password = ""
+                                confirmPassword = ""
+                            } catch (exception: Exception) {
+                                message = exception.message
+                                    ?: "Registration failed. Please try again."
+
+                                isError = true
+                            } finally {
+                                isLoading = false
+                            }
+                        }
+                    }
                 }
             }
         )
@@ -167,7 +205,9 @@ fun RegisterScreen(
                 fontSize = 11.sp
             )
 
-            TextButton(onClick = onBackToLogin) {
+            TextButton(
+                onClick = onBackToLogin
+            ) {
                 Text(
                     text = "Log In",
                     fontSize = 11.sp

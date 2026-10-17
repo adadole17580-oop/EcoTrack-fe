@@ -15,8 +15,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.sp
 import edp.app.ecotrack.components.auth.AuthButton
 import edp.app.ecotrack.components.auth.AuthPage
 import edp.app.ecotrack.components.auth.AuthTextField
@@ -25,16 +25,17 @@ import edp.app.ecotrack.components.auth.AuthTextField
 fun LoginScreen(
     onRegisterClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
-    onLogin: (String, String) -> Unit
+    onLogin: (String, String) -> Unit,
+    loginMessage: String = "",
+    isLoading: Boolean = false
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var keepSignedIn by rememberSaveable { mutableStateOf(false) }
     var message by rememberSaveable { mutableStateOf("") }
-    var isError by rememberSaveable { mutableStateOf(true) }
 
     AuthPage(
-        title = "Sign in to you account",
+        title = "Sign in to your account",
         subtitle = "Enter your account details to continue.",
         topLabel = "WELCOME BACK!"
     ) {
@@ -66,9 +67,8 @@ fun LoginScreen(
         ) {
             Checkbox(
                 checked = keepSignedIn,
-                onCheckedChange = {
-                    keepSignedIn = it
-                }
+                onCheckedChange = { keepSignedIn = it },
+                enabled = !isLoading
             )
 
             Text(
@@ -78,7 +78,8 @@ fun LoginScreen(
             )
 
             TextButton(
-                onClick = onForgotPasswordClick
+                onClick = onForgotPasswordClick,
+                enabled = !isLoading
             ) {
                 Text(
                     text = "Forgot Password?",
@@ -87,37 +88,41 @@ fun LoginScreen(
             }
         }
 
-        if (message.isNotBlank()) {
+        val displayedMessage = loginMessage.ifBlank { message }
+
+        if (displayedMessage.isNotBlank()) {
             Text(
-                text = message,
-                color = if (isError) Color.Red else Color(0xFF24652A),
+                text = displayedMessage,
+                color = if (loginMessage.isNotBlank()) {
+                    Color.Red
+                } else {
+                    Color.Red
+                },
                 fontSize = 12.sp
             )
         }
 
         AuthButton(
-            text = "Log In",
+            text = if (isLoading) "Logging in..." else "Log In",
             onClick = {
-                when {
-                    email.isBlank() -> {
-                        message = "Please enter your email address."
-                        isError = true
-                    }
+                if (!isLoading) {
+                    when {
+                        email.isBlank() -> {
+                            message = "Please enter your email address."
+                        }
 
-                    !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
-                        message = "Please enter a valid email address."
-                        isError = true
-                    }
+                        !Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() -> {
+                            message = "Please enter a valid email address."
+                        }
 
-                    password.isBlank() -> {
-                        message = "Please enter your password."
-                        isError = true
-                    }
+                        password.isBlank() -> {
+                            message = "Please enter your password."
+                        }
 
-                    else -> {
-                        onLogin(email.trim(), password)
-                        message = "Login is ready for backend integration."
-                        isError = false
+                        else -> {
+                            message = ""
+                            onLogin(email.trim(), password)
+                        }
                     }
                 }
             }
@@ -133,7 +138,10 @@ fun LoginScreen(
                 fontSize = 11.sp
             )
 
-            TextButton(onClick = onRegisterClick) {
+            TextButton(
+                onClick = onRegisterClick,
+                enabled = !isLoading
+            ) {
                 Text(
                     text = "Register",
                     fontSize = 11.sp
