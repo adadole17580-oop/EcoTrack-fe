@@ -1,19 +1,26 @@
+
 package edp.app.ecotrack.navigation
 
 import android.net.Uri
+import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 import edp.app.ecotrack.login.LoginScreen
 import edp.app.ecotrack.login.ForgotPasswordScreen
 import edp.app.ecotrack.login.OtpVerificationScreen
 import edp.app.ecotrack.login.ResetPasswordScreen
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import edp.app.ecotrack.network.ApiClient
 
 import edp.app.ecotrack.screens.analytics.AnalyticsScreen
@@ -49,23 +56,27 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
 
+    // Keep the token through normal activity recreation.
+    val accessToken = rememberSaveable { mutableStateOf("") }
+
+    val dashboardStatistics = remember {
+        mutableStateOf<JSONObject?>(null)
+    }
+    val statisticsLoading = remember { mutableStateOf(false) }
+    val statisticsError = remember { mutableStateOf("") }
+
     NavHost(
         navController = navController,
         startDestination = Routes.LOGIN
     ) {
-
-
-        // =====================================================
         // LOGIN
-        // =====================================================
-
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginClick = { email, password, onResult ->
-
                     scope.launch {
                         try {
-                            // Authenticate through the backend.
+                            Log.d("ECO_TRACK", "Attempting admin login")
+
                             val response = ApiClient.login(
                                 email = email,
                                 password = password
@@ -73,9 +84,28 @@ fun AppNavigation() {
 
                             val user = response.optJSONObject("user")
                             val role = user?.optString("role").orEmpty()
+                            val session = response.optJSONObject("session")
+                            val token = session
+                                ?.optString("access_token")
+                                .orEmpty()
 
-                            if (role == "admin") {
-                                // Login successful: close the login screen.
+                            if (token.isBlank()) {
+                                onResult(
+                                    "Login succeeded, but no access token was returned."
+                                )
+                                return@launch
+                            }
+
+                            if (role.equals("admin", ignoreCase = true)) {
+                                accessToken.value = token
+                                dashboardStatistics.value = null
+                                statisticsError.value = ""
+
+                                Log.d(
+                                    "ECO_TRACK",
+                                    "Admin login successful; token received"
+                                )
+
                                 navController.navigate(Routes.DASHBOARD) {
                                     popUpTo(Routes.LOGIN) {
                                         inclusive = true
@@ -87,26 +117,26 @@ fun AppNavigation() {
                             } else {
                                 onResult("Admin access only.")
                             }
-
                         } catch (e: Exception) {
+                            Log.e(
+                                "ECO_TRACK",
+                                "Login error: ${e.message}",
+                                e
+                            )
+
                             onResult(
                                 e.message ?: "Login failed. Please try again."
                             )
                         }
                     }
                 },
-
                 onForgotPasswordClick = {
                     navController.navigate(Routes.FORGOT_PASSWORD)
                 }
             )
         }
 
-
-        // =====================================================
         // FORGOT PASSWORD
-        // =====================================================
-
         composable(Routes.FORGOT_PASSWORD) {
             ForgotPasswordScreen(
                 onContinueClick = { email ->
@@ -121,10 +151,7 @@ fun AppNavigation() {
             )
         }
 
-        // =====================================================
         // OTP VERIFICATION
-        // =====================================================
-
         composable(
             route = "${Routes.OTP}?email={email}",
             arguments = listOf(
@@ -134,14 +161,14 @@ fun AppNavigation() {
                 }
             )
         ) { backStackEntry ->
-            val email = backStackEntry.arguments?.getString("email").orEmpty()
+            val email = backStackEntry.arguments
+                ?.getString("email")
+                .orEmpty()
 
             OtpVerificationScreen(
                 email = email,
                 onVerifyClick = { code ->
-                    // FRONTEND DEMO ONLY:
-                    // Continue when a five-digit code is entered.
-                    // Actual OTP verification needs a backend.
+                    // Demo only: connect real OTP verification later.
                     if (code.length == 5 && code.all { it.isDigit() }) {
                         navController.navigate(Routes.RESET_PASSWORD)
                     }
@@ -155,16 +182,11 @@ fun AppNavigation() {
             )
         }
 
-        // =====================================================
-        // RESET PASSWORD + SUCCESS SCREEN
-        // Both screens are handled inside ResetPasswordScreen.
-        // =====================================================
-
+        // RESET PASSWORD
         composable(Routes.RESET_PASSWORD) {
             ResetPasswordScreen(
                 onFinishClick = { newPassword ->
-                    // Frontend demo only.
-                    // The password is not saved to an account yet.
+                    // Demo only: this does not save the password yet.
                 },
                 onBackToLoginClick = {
                     navController.navigate(Routes.LOGIN) {
@@ -177,17 +199,72 @@ fun AppNavigation() {
             )
         }
 
-        // =====================================================
         // DASHBOARD
-        // =====================================================
-
         composable(Routes.DASHBOARD) {
+            LaunchedEffect(accessToken.value) {
+                val token = accessToken.value
+
+                if (token.isNotBlank()) {
+                    statisticsLoading.value = true
+                    statisticsError.value = ""
+
+                    Log.d(
+                        "ECO_TRACK",
+                        "Dashboard screen opened; requesting statistics"
+                    )
+
+                    try {
+                        val response = ApiClient.getDashboardStats(
+                            accessToken = token
+                        )
+
+                        Log.d(
+                            "ECO_TRACK",
+                            "Dashboard response: $response"
+                        )
+
+                        if (response.optString("status") == "OK") {
+                            dashboardStatistics.value = response
+                        } else {
+                            dashboardStatistics.value = null
+                            statisticsError.value = response.optString(
+                                "message",
+                                "Unable to load dashboard statistics."
+                            )
+                        }
+                    } catch (e: Exception) {
+                        Log.e(
+                            "ECO_TRACK",
+                            "Dashboard request failed: ${e.message}",
+                            e
+                        )
+
+                        dashboardStatistics.value = null
+                        statisticsError.value = e.message
+                            ?: "Unable to load dashboard statistics."
+                    } finally {
+                        statisticsLoading.value = false
+                    }
+                } else {
+                    Log.e(
+                        "ECO_TRACK",
+                        "Dashboard opened without an access token"
+                    )
+
+                    dashboardStatistics.value = null
+                    statisticsError.value = "Please log in again."
+                }
+            }
+
             DashboardScreen(
                 admin = AdminInfo(
                     role = "ADMINISTRATOR",
                     name = "System Admin",
                     email = "admin@ecotrack.gov.ph"
                 ),
+                dashboardStatistics = dashboardStatistics.value,
+                statisticsLoading = statisticsLoading.value,
+                statisticsError = statisticsError.value,
                 onViewAllClick = {
                     navController.navigate(Routes.WASTE_REPORT)
                 },
@@ -218,10 +295,7 @@ fun AppNavigation() {
             )
         }
 
-        // =====================================================
         // WASTE REPORT
-        // =====================================================
-
         composable(Routes.WASTE_REPORT) {
             WasteReportScreen(
                 onNotificationClick = {
@@ -260,10 +334,7 @@ fun AppNavigation() {
             )
         }
 
-        // =====================================================
         // COLLECTORS
-        // =====================================================
-
         composable(Routes.COLLECTORS) {
             CollectorsScreen(
                 onNotificationClick = {
@@ -293,10 +364,7 @@ fun AppNavigation() {
             )
         }
 
-        // =====================================================
         // RESIDENTS
-        // =====================================================
-
         composable(Routes.RESIDENTS) {
             ResidentsScreen(
                 onNotificationClick = {
@@ -326,10 +394,7 @@ fun AppNavigation() {
             )
         }
 
-        // =====================================================
         // SCHEDULE
-        // =====================================================
-
         composable(Routes.SCHEDULE) {
             ScheduleScreen(
                 onNotificationClick = {
@@ -359,10 +424,7 @@ fun AppNavigation() {
             )
         }
 
-        // =====================================================
         // ANALYTICS
-        // =====================================================
-
         composable(Routes.ANALYTICS) {
             AnalyticsScreen(
                 onNotificationClick = {
@@ -392,10 +454,7 @@ fun AppNavigation() {
             )
         }
 
-        // =====================================================
         // WASTE GUIDE
-        // =====================================================
-
         composable(Routes.WASTE_GUIDE) {
             WasteGuideScreen(
                 onNotificationClick = {
@@ -413,9 +472,6 @@ fun AppNavigation() {
                 onCollectorsClick = {
                     navController.navigate(Routes.COLLECTORS)
                 },
-                onResidentsClick = {
-                    navController.navigate(Routes.RESIDENTS)
-                },
                 onScheduleClick = {
                     navController.navigate(Routes.SCHEDULE)
                 },
@@ -425,10 +481,7 @@ fun AppNavigation() {
             )
         }
 
-        // =====================================================
         // NOTIFICATIONS
-        // =====================================================
-
         composable(Routes.NOTIFICATIONS) {
             NotificationsScreen(
                 onDashboardClick = {
@@ -461,10 +514,7 @@ fun AppNavigation() {
             )
         }
 
-        // =====================================================
         // MY PROFILE
-        // =====================================================
-
         composable(Routes.PROFILE) {
             ProfileScreen(
                 onDashboardClick = {

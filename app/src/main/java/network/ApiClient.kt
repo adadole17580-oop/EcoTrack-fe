@@ -20,6 +20,7 @@ object ApiClient {
     // Test the connection to the backend
     suspend fun testConnection(): String =
         withContext(Dispatchers.IO) {
+
             val request = Request.Builder()
                 .url("$BASE_URL/api/health")
                 .get()
@@ -38,7 +39,7 @@ object ApiClient {
             }
         }
 
-    // Log in through the backend
+    // Admin login through the backend
     suspend fun login(
         email: String,
         password: String
@@ -69,12 +70,12 @@ object ApiClient {
             }
 
             if (!response.isSuccessful) {
-                val message = result.optString(
-                    "message",
-                    "Login failed. Please try again."
+                throw IOException(
+                    result.optString(
+                        "message",
+                        "Login failed. Please try again."
+                    )
                 )
-
-                throw IOException(message)
             }
 
             if (result.optString("status") != "OK") {
@@ -82,6 +83,56 @@ object ApiClient {
                     result.optString(
                         "message",
                         "Login failed. Please try again."
+                    )
+                )
+            }
+
+            result
+        }
+    }
+
+    // Load admin dashboard statistics
+    suspend fun getDashboardStats(
+        accessToken: String
+    ): JSONObject = withContext(Dispatchers.IO) {
+
+        if (accessToken.isBlank()) {
+            throw IOException(
+                "Please log in before loading dashboard statistics."
+            )
+        }
+
+        val request = Request.Builder()
+            .url("$BASE_URL/api/dashboard/stats")
+            .header("Authorization", "Bearer $accessToken")
+            .get()
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val body = response.body?.string().orEmpty()
+
+            val result = try {
+                JSONObject(body)
+            } catch (_: Exception) {
+                throw IOException(
+                    "The server returned an invalid dashboard response."
+                )
+            }
+
+            if (!response.isSuccessful) {
+                throw IOException(
+                    result.optString(
+                        "message",
+                        "Could not load dashboard statistics."
+                    )
+                )
+            }
+
+            if (result.optString("status") != "OK") {
+                throw IOException(
+                    result.optString(
+                        "message",
+                        "Could not load dashboard statistics."
                     )
                 )
             }

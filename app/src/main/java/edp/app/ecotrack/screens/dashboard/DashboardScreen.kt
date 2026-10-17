@@ -1,5 +1,7 @@
+
 package edp.app.ecotrack.screens.dashboard
 
+import org.json.JSONObject
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -55,7 +57,7 @@ import edp.app.ecotrack.screens.waste_report.ViewReportScreen
 import edp.app.ecotrack.screens.waste_report.WasteReport
 
 // ---------------------------------------------------------
-// ECO TRACK COLORS
+// ECOTRACK COLORS
 // ---------------------------------------------------------
 
 private val EcoDarkGreen = Color(0xFF216B2A)
@@ -65,14 +67,9 @@ private val EcoBorder = Color(0xFF8BE5A7)
 private val EcoTextGreen = Color(0xFF286B32)
 private val White = Color.White
 
-
 // ---------------------------------------------------------
 // ADMIN INFORMATION
 // ---------------------------------------------------------
-//
-// Frontend-only for now.
-// Later, these values can come from the logged-in account/backend.
-//
 
 data class AdminInfo(
     val role: String,
@@ -86,7 +83,6 @@ private val currentAdmin = AdminInfo(
     email = "admin@ecotrack.gov.ph"
 )
 
-
 // ---------------------------------------------------------
 // DASHBOARD
 // ---------------------------------------------------------
@@ -94,6 +90,9 @@ private val currentAdmin = AdminInfo(
 @Composable
 fun DashboardScreen(
     admin: AdminInfo = currentAdmin,
+    dashboardStatistics: JSONObject? = null,
+    statisticsLoading: Boolean = false,
+    statisticsError: String = "",
     onViewAllClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
@@ -104,6 +103,36 @@ fun DashboardScreen(
     onAnalyticsClick: () -> Unit = {},
     onWasteGuideClick: () -> Unit = {}
 ) {
+    // Expected API response:
+    // {
+    //   "status": "OK",
+    //   "statistics": {
+    //     "totalResidents": 0,
+    //     "totalCollectors": 0,
+    //     "pendingReports": 0,
+    //     "inProgressReports": 0,
+    //     "forVerificationReports": 0,
+    //     "resolvedReports": 0
+    //   }
+    // }
+
+    val stats = dashboardStatistics?.optJSONObject("statistics")
+
+    val unavailableNumber = when {
+        statisticsLoading -> "..."
+        else -> "—"
+    }
+
+    // Do not display a fake zero if the API did not return a field.
+    fun getStatistic(key: String): String {
+        return if (stats != null && stats.has(key) &&
+            !stats.isNull(key)
+        ) {
+            stats.optInt(key).toString()
+        } else {
+            unavailableNumber
+        }
+    }
 
     var selectedReport by remember {
         mutableStateOf<WasteReport?>(null)
@@ -114,7 +143,6 @@ fun DashboardScreen(
             .fillMaxSize()
             .background(EcoLightGreen)
     ) {
-
         // -------------------------------------------------
         // LEFT SIDEBAR
         // -------------------------------------------------
@@ -138,15 +166,10 @@ fun DashboardScreen(
                 .fillMaxHeight()
                 .weight(1f)
         ) {
-
-            // TOP BAR
-
             DashboardTopBar(
                 onNotificationClick = onNotificationClick,
                 onProfileClick = onProfileClick
             )
-
-            // DASHBOARD CONTENT
 
             LazyColumn(
                 modifier = Modifier
@@ -157,26 +180,53 @@ fun DashboardScreen(
                     ),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // -------------------------------------------------
+                // API LOADING / ERROR MESSAGE
+                // -------------------------------------------------
+
+                if (statisticsLoading || statisticsError.isNotBlank()) {
+                    item {
+                        Text(
+                            text = when {
+                                statisticsLoading ->
+                                    "Loading dashboard statistics..."
+                                else ->
+                                    "Unable to load statistics: $statisticsError"
+                            },
+                            color = if (statisticsError.isNotBlank()) {
+                                Color(0xFFB3261E)
+                            } else {
+                                EcoTextGreen
+                            },
+                            fontSize = 12.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    White,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(12.dp)
+                        )
+                    }
+                }
 
                 // -------------------------------------------------
                 // FIRST ROW OF STATISTICS
                 // -------------------------------------------------
 
                 item {
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-
                         StatisticCard(
                             modifier = Modifier.weight(1f),
                             icon = Icons.Default.People,
                             iconBackground = Color(0xFFD9EFFC),
                             iconColor = Color(0xFF5A9BC7),
-                            number = "1,248",
+                            number = getStatistic("totalResidents"),
                             title = "Total Residents",
-                            subtitle = "+12 this month"
+                            subtitle = "Registered residents"
                         )
 
                         StatisticCard(
@@ -184,9 +234,9 @@ fun DashboardScreen(
                             icon = Icons.Default.LocalShipping,
                             iconBackground = Color(0xFFE0D1E5),
                             iconColor = Color(0xFF72547E),
-                            number = "34",
+                            number = getStatistic("totalCollectors"),
                             title = "Collectors",
-                            subtitle = "2 inactive"
+                            subtitle = "Registered collectors"
                         )
 
                         StatisticCard(
@@ -194,7 +244,7 @@ fun DashboardScreen(
                             icon = Icons.Default.AccessTime,
                             iconBackground = Color(0xFFF3E9B9),
                             iconColor = Color(0xFFC49B22),
-                            number = "18",
+                            number = getStatistic("pendingReports"),
                             title = "Pending",
                             subtitle = "Needs Assignment"
                         )
@@ -206,20 +256,18 @@ fun DashboardScreen(
                 // -------------------------------------------------
 
                 item {
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-
                         StatisticCard(
                             modifier = Modifier.weight(1f),
                             icon = Icons.Default.AccessTime,
                             iconBackground = Color(0xFFBDEFE8),
                             iconColor = Color(0xFF26B8A8),
-                            number = "9",
+                            number = getStatistic("inProgressReports"),
                             title = "In Progress",
-                            subtitle = "Being handle"
+                            subtitle = "Currently being handled"
                         )
 
                         StatisticCard(
@@ -227,7 +275,7 @@ fun DashboardScreen(
                             icon = Icons.Default.Visibility,
                             iconBackground = Color(0xFFF2D3C9),
                             iconColor = Color(0xFFE27B5F),
-                            number = "5",
+                            number = getStatistic("forVerificationReports"),
                             title = "For Verification",
                             subtitle = "Awaiting review"
                         )
@@ -237,19 +285,19 @@ fun DashboardScreen(
                             icon = Icons.Default.CheckCircle,
                             iconBackground = Color(0xFFC8DAC8),
                             iconColor = EcoGreen,
-                            number = "412",
+                            number = getStatistic("resolvedReports"),
                             title = "Resolved",
-                            subtitle = "+28 this week"
+                            subtitle = "Resolved reports"
                         )
                     }
                 }
 
                 // -------------------------------------------------
                 // RECENT WASTE REPORTS
+                // Existing sample layout preserved.
                 // -------------------------------------------------
 
                 item {
-
                     RecentWasteReports(
                         onViewAllClick = onViewAllClick,
                         onViewClick = { report ->
@@ -259,10 +307,7 @@ fun DashboardScreen(
                 }
 
                 item {
-
-                    Spacer(
-                        modifier = Modifier.height(20.dp)
-                    )
+                    Spacer(modifier = Modifier.height(20.dp))
                 }
             }
         }
@@ -273,7 +318,6 @@ fun DashboardScreen(
     // ---------------------------------------------------------
 
     selectedReport?.let { report ->
-
         ViewReportScreen(
             report = report,
             onDismiss = {
@@ -282,7 +326,6 @@ fun DashboardScreen(
         )
     }
 }
-
 
 // ---------------------------------------------------------
 // SIDEBAR
@@ -298,7 +341,6 @@ private fun DashboardSidebar(
     onAnalyticsClick: () -> Unit,
     onWasteGuideClick: () -> Unit = {}
 ) {
-
     Column(
         modifier = Modifier
             .width(250.dp)
@@ -306,11 +348,6 @@ private fun DashboardSidebar(
             .background(EcoDarkGreen)
             .padding(bottom = 20.dp)
     ) {
-
-        // -------------------------------------------------
-        // ECOTRACK LOGO
-        // -------------------------------------------------
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -318,7 +355,6 @@ private fun DashboardSidebar(
                 .padding(horizontal = 18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Text(
                 text = "♧EcoTrack",
                 color = White,
@@ -326,10 +362,6 @@ private fun DashboardSidebar(
                 fontWeight = FontWeight.Medium
             )
         }
-
-        // -------------------------------------------------
-        // ADMIN INFORMATION
-        // -------------------------------------------------
 
         Column(
             modifier = Modifier
@@ -343,20 +375,13 @@ private fun DashboardSidebar(
                     vertical = 12.dp
                 )
         ) {
-
-            // ROLE
-
             Text(
                 text = admin.role,
                 color = Color(0xFF9FD6A5),
                 fontSize = 11.sp
             )
 
-            Spacer(
-                modifier = Modifier.height(6.dp)
-            )
-
-            // NAME
+            Spacer(modifier = Modifier.height(6.dp))
 
             Text(
                 text = admin.name,
@@ -365,8 +390,6 @@ private fun DashboardSidebar(
                 fontWeight = FontWeight.Medium
             )
 
-            // EMAIL
-
             Text(
                 text = admin.email,
                 color = Color(0xFFB9DDBD),
@@ -374,13 +397,7 @@ private fun DashboardSidebar(
             )
         }
 
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
-
-        // -------------------------------------------------
-        // SIDEBAR MENU
-        // -------------------------------------------------
+        Spacer(modifier = Modifier.height(20.dp))
 
         SidebarItem(
             icon = Icons.Default.GridView,
@@ -426,7 +443,6 @@ private fun DashboardSidebar(
     }
 }
 
-
 // ---------------------------------------------------------
 // SIDEBAR ITEM
 // ---------------------------------------------------------
@@ -438,7 +454,6 @@ private fun SidebarItem(
     selected: Boolean = false,
     onClick: () -> Unit = {}
 ) {
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -455,13 +470,10 @@ private fun SidebarItem(
                 },
                 shape = RoundedCornerShape(22.dp)
             )
-            .clickable {
-                onClick()
-            }
+            .clickable { onClick() }
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Icon(
             imageVector = icon,
             contentDescription = title,
@@ -469,9 +481,7 @@ private fun SidebarItem(
             modifier = Modifier.size(19.dp)
         )
 
-        Spacer(
-            modifier = Modifier.width(14.dp)
-        )
+        Spacer(modifier = Modifier.width(14.dp))
 
         Text(
             text = title,
@@ -480,7 +490,6 @@ private fun SidebarItem(
         )
     }
 }
-
 
 // ---------------------------------------------------------
 // TOP BAR
@@ -491,18 +500,14 @@ private fun DashboardTopBar(
     onNotificationClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(62.dp)
-            .background(
-                Color(0xFFE0F2E5)
-            )
+            .background(Color(0xFFE0F2E5))
             .padding(horizontal = 25.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Icon(
             imageVector = Icons.Default.Menu,
             contentDescription = "Menu",
@@ -510,9 +515,7 @@ private fun DashboardTopBar(
             modifier = Modifier.size(23.dp)
         )
 
-        Spacer(
-            modifier = Modifier.width(15.dp)
-        )
+        Spacer(modifier = Modifier.width(15.dp))
 
         Text(
             text = "Dashboard",
@@ -521,16 +524,9 @@ private fun DashboardTopBar(
             fontWeight = FontWeight.Medium
         )
 
-        Spacer(
-            modifier = Modifier.weight(1f)
-        )
+        Spacer(modifier = Modifier.weight(1f))
 
-        // -------------------------------------------------
-        // NOTIFICATION BUTTON
-        // -------------------------------------------------
-        IconButton(
-            onClick = onNotificationClick
-        ) {
+        IconButton(onClick = onNotificationClick) {
             Icon(
                 imageVector = Icons.Default.Notifications,
                 contentDescription = "Notifications",
@@ -539,12 +535,7 @@ private fun DashboardTopBar(
             )
         }
 
-        // -------------------------------------------------
-        // PROFILE BUTTON
-        // -------------------------------------------------
-        IconButton(
-            onClick = onProfileClick
-        ) {
+        IconButton(onClick = onProfileClick) {
             Icon(
                 imageVector = Icons.Default.AccountCircle,
                 contentDescription = "Profile",
@@ -569,7 +560,6 @@ private fun StatisticCard(
     title: String,
     subtitle: String
 ) {
-
     Card(
         modifier = modifier
             .height(175.dp)
@@ -587,13 +577,9 @@ private fun StatisticCard(
             containerColor = White
         )
     ) {
-
         Column(
             modifier = Modifier.padding(18.dp)
         ) {
-
-            // ICON
-
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -603,7 +589,6 @@ private fun StatisticCard(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
@@ -612,11 +597,7 @@ private fun StatisticCard(
                 )
             }
 
-            Spacer(
-                modifier = Modifier.height(17.dp)
-            )
-
-            // NUMBER
+            Spacer(modifier = Modifier.height(17.dp))
 
             Text(
                 text = number,
@@ -625,19 +606,13 @@ private fun StatisticCard(
                 fontWeight = FontWeight.Medium
             )
 
-            Spacer(
-                modifier = Modifier.height(3.dp)
-            )
-
-            // TITLE
+            Spacer(modifier = Modifier.height(3.dp))
 
             Text(
                 text = title,
                 color = EcoTextGreen,
                 fontSize = 12.sp
             )
-
-            // SUBTITLE
 
             Text(
                 text = subtitle,
@@ -648,9 +623,9 @@ private fun StatisticCard(
     }
 }
 
-
 // ---------------------------------------------------------
 // RECENT WASTE REPORTS
+// Existing sample data preserved.
 // ---------------------------------------------------------
 
 @Composable
@@ -658,7 +633,6 @@ private fun RecentWasteReports(
     onViewAllClick: () -> Unit,
     onViewClick: (WasteReport) -> Unit
 ) {
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -677,13 +651,7 @@ private fun RecentWasteReports(
             containerColor = White
         )
     ) {
-
         Column {
-
-            // -------------------------------------------------
-            // TITLE + VIEW ALL
-            // -------------------------------------------------
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -695,7 +663,6 @@ private fun RecentWasteReports(
                     ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Text(
                     text = "Recent Waste Reports",
                     color = EcoTextGreen,
@@ -703,34 +670,22 @@ private fun RecentWasteReports(
                     fontWeight = FontWeight.Medium
                 )
 
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
-
-                // CLICKABLE VIEW ALL
+                Spacer(modifier = Modifier.weight(1f))
 
                 Text(
                     text = "View All",
                     color = EcoGreen,
                     fontSize = 12.sp,
                     modifier = Modifier
-                        .clickable {
-                            onViewAllClick()
-                        }
+                        .clickable { onViewAllClick() }
                         .padding(5.dp)
                 )
             }
 
-            // -------------------------------------------------
-            // TABLE HEADER
-            // -------------------------------------------------
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Color(0xFFF2FAF4)
-                    )
+                    .background(Color(0xFFF2FAF4))
                     .border(
                         width = 1.dp,
                         color = Color(0xFFD6F0DC)
@@ -741,7 +696,6 @@ private fun RecentWasteReports(
                     ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Text(
                     text = "REPORT\nID",
                     modifier = Modifier.weight(0.8f),
@@ -778,10 +732,6 @@ private fun RecentWasteReports(
                 )
             }
 
-            // -------------------------------------------------
-            // SAMPLE REPORT
-            // -------------------------------------------------
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -791,9 +741,6 @@ private fun RecentWasteReports(
                     ),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
-                // REPORT ID
-
                 Text(
                     text = "#1024",
                     modifier = Modifier.weight(0.8f),
@@ -801,12 +748,9 @@ private fun RecentWasteReports(
                     fontSize = 12.sp
                 )
 
-                // RESIDENT
-
                 Column(
                     modifier = Modifier.weight(1.8f)
                 ) {
-
                     Text(
                         text = "Angel Dadole",
                         color = EcoTextGreen,
@@ -820,8 +764,6 @@ private fun RecentWasteReports(
                     )
                 }
 
-                // CATEGORY
-
                 Text(
                     text = "Overflowing Garbage",
                     modifier = Modifier.weight(1.7f),
@@ -829,12 +771,9 @@ private fun RecentWasteReports(
                     fontSize = 12.sp
                 )
 
-                // STATUS
-
                 Box(
                     modifier = Modifier.weight(1.2f)
                 ) {
-
                     Text(
                         text = "For Verification",
                         color = Color(0xFFE97878),
@@ -851,13 +790,10 @@ private fun RecentWasteReports(
                     )
                 }
 
-                // VIEW BUTTON
-
                 Box(
                     modifier = Modifier
                         .weight(0.9f)
                         .clickable {
-
                             onViewClick(
                                 WasteReport(
                                     reportId = "#1024",
@@ -872,7 +808,6 @@ private fun RecentWasteReports(
                         },
                     contentAlignment = Alignment.CenterStart
                 ) {
-
                     Text(
                         text = "View",
                         color = EcoGreen,
