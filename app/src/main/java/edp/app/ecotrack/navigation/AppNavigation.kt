@@ -1,9 +1,20 @@
 package edp.app.ecotrack.navigation
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+
+import edp.app.ecotrack.login.LoginScreen
+import edp.app.ecotrack.login.ForgotPasswordScreen
+import edp.app.ecotrack.login.OtpVerificationScreen
+import edp.app.ecotrack.login.ResetPasswordScreen
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import edp.app.ecotrack.network.ApiClient
 
 import edp.app.ecotrack.screens.analytics.AnalyticsScreen
 import edp.app.ecotrack.screens.collectors.CollectorsScreen
@@ -17,6 +28,10 @@ import edp.app.ecotrack.screens.waste_guide.WasteGuideScreen
 import edp.app.ecotrack.screens.waste_report.WasteReportScreen
 
 object Routes {
+    const val LOGIN = "login"
+    const val FORGOT_PASSWORD = "forgot_password"
+    const val OTP = "otp_verification"
+    const val RESET_PASSWORD = "reset_password"
 
     const val DASHBOARD = "dashboard"
     const val WASTE_REPORT = "waste_report"
@@ -31,84 +46,174 @@ object Routes {
 
 @Composable
 fun AppNavigation() {
-
     val navController = rememberNavController()
+    val scope = rememberCoroutineScope()
 
     NavHost(
         navController = navController,
-        startDestination = Routes.DASHBOARD
+        startDestination = Routes.LOGIN
     ) {
+
+
+        // =====================================================
+        // LOGIN
+        // =====================================================
+
+        composable(Routes.LOGIN) {
+            LoginScreen(
+                onLoginClick = { email, password, onResult ->
+
+                    scope.launch {
+                        try {
+                            // Authenticate through the backend.
+                            val response = ApiClient.login(
+                                email = email,
+                                password = password
+                            )
+
+                            val user = response.optJSONObject("user")
+                            val role = user?.optString("role").orEmpty()
+
+                            if (role == "admin") {
+                                // Login successful: close the login screen.
+                                navController.navigate(Routes.DASHBOARD) {
+                                    popUpTo(Routes.LOGIN) {
+                                        inclusive = true
+                                    }
+                                    launchSingleTop = true
+                                }
+
+                                onResult(null)
+                            } else {
+                                onResult("Admin access only.")
+                            }
+
+                        } catch (e: Exception) {
+                            onResult(
+                                e.message ?: "Login failed. Please try again."
+                            )
+                        }
+                    }
+                },
+
+                onForgotPasswordClick = {
+                    navController.navigate(Routes.FORGOT_PASSWORD)
+                }
+            )
+        }
+
+
+        // =====================================================
+        // FORGOT PASSWORD
+        // =====================================================
+
+        composable(Routes.FORGOT_PASSWORD) {
+            ForgotPasswordScreen(
+                onContinueClick = { email ->
+                    val encodedEmail = Uri.encode(email.trim())
+                    navController.navigate(
+                        "${Routes.OTP}?email=$encodedEmail"
+                    )
+                },
+                onBackToLoginClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // =====================================================
+        // OTP VERIFICATION
+        // =====================================================
+
+        composable(
+            route = "${Routes.OTP}?email={email}",
+            arguments = listOf(
+                navArgument("email") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
+            )
+        ) { backStackEntry ->
+            val email = backStackEntry.arguments?.getString("email").orEmpty()
+
+            OtpVerificationScreen(
+                email = email,
+                onVerifyClick = { code ->
+                    // FRONTEND DEMO ONLY:
+                    // Continue when a five-digit code is entered.
+                    // Actual OTP verification needs a backend.
+                    if (code.length == 5 && code.all { it.isDigit() }) {
+                        navController.navigate(Routes.RESET_PASSWORD)
+                    }
+                },
+                onResendCodeClick = {
+                    // Connect to the backend when OTP delivery is implemented.
+                },
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // =====================================================
+        // RESET PASSWORD + SUCCESS SCREEN
+        // Both screens are handled inside ResetPasswordScreen.
+        // =====================================================
+
+        composable(Routes.RESET_PASSWORD) {
+            ResetPasswordScreen(
+                onFinishClick = { newPassword ->
+                    // Frontend demo only.
+                    // The password is not saved to an account yet.
+                },
+                onBackToLoginClick = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.LOGIN) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
 
         // =====================================================
         // DASHBOARD
         // =====================================================
 
         composable(Routes.DASHBOARD) {
-
             DashboardScreen(
-
                 admin = AdminInfo(
                     role = "ADMINISTRATOR",
                     name = "System Admin",
                     email = "admin@ecotrack.gov.ph"
                 ),
-
-                // VIEW ALL
                 onViewAllClick = {
-                    navController.navigate(
-                        Routes.WASTE_REPORT
-                    )
+                    navController.navigate(Routes.WASTE_REPORT)
                 },
-
-                // BELL
                 onNotificationClick = {
-                    navController.navigate(
-                        Routes.NOTIFICATIONS
-                    )
+                    navController.navigate(Routes.NOTIFICATIONS)
                 },
-
-                // PROFILE
                 onProfileClick = {
-                    navController.navigate(
-                        Routes.PROFILE
-                    )
+                    navController.navigate(Routes.PROFILE)
                 },
-
-                // SIDEBAR
                 onWasteReportClick = {
-                    navController.navigate(
-                        Routes.WASTE_REPORT
-                    )
+                    navController.navigate(Routes.WASTE_REPORT)
                 },
-
                 onCollectorsClick = {
-                    navController.navigate(
-                        Routes.COLLECTORS
-                    )
+                    navController.navigate(Routes.COLLECTORS)
                 },
-
                 onResidentsClick = {
-                    navController.navigate(
-                        Routes.RESIDENTS
-                    )
+                    navController.navigate(Routes.RESIDENTS)
                 },
-
                 onSchedulesClick = {
-                    navController.navigate(
-                        Routes.SCHEDULE
-                    )
+                    navController.navigate(Routes.SCHEDULE)
                 },
-
                 onAnalyticsClick = {
-                    navController.navigate(
-                        Routes.ANALYTICS
-                    )
+                    navController.navigate(Routes.ANALYTICS)
                 },
-
                 onWasteGuideClick = {
-                    navController.navigate(
-                        Routes.WASTE_GUIDE
-                    )
+                    navController.navigate(Routes.WASTE_GUIDE)
                 }
             )
         }
@@ -118,68 +223,39 @@ fun AppNavigation() {
         // =====================================================
 
         composable(Routes.WASTE_REPORT) {
-
             WasteReportScreen(
-
                 onNotificationClick = {
-                    navController.navigate(
-                        Routes.NOTIFICATIONS
-                    )
+                    navController.navigate(Routes.NOTIFICATIONS)
                 },
-
                 onProfileClick = {
-                    navController.navigate(
-                        Routes.PROFILE
-                    )
+                    navController.navigate(Routes.PROFILE)
                 },
-
                 onDashboardClick = {
-                    navController.navigate(
-                        Routes.DASHBOARD
-                    )
+                    navController.navigate(Routes.DASHBOARD)
                 },
-
                 onCollectorsClick = {
-                    navController.navigate(
-                        Routes.COLLECTORS
-                    )
+                    navController.navigate(Routes.COLLECTORS)
                 },
-
                 onResidentsClick = {
-                    navController.navigate(
-                        Routes.RESIDENTS
-                    )
+                    navController.navigate(Routes.RESIDENTS)
                 },
-
                 onScheduleClick = {
-                    navController.navigate(
-                        Routes.SCHEDULE
-                    )
+                    navController.navigate(Routes.SCHEDULE)
                 },
-
                 onAnalyticsClick = {
-                    navController.navigate(
-                        Routes.ANALYTICS
-                    )
+                    navController.navigate(Routes.ANALYTICS)
                 },
-
                 onWasteGuideClick = {
-                    navController.navigate(
-                        Routes.WASTE_GUIDE
-                    )
+                    navController.navigate(Routes.WASTE_GUIDE)
                 },
-
-                // These will be connected to the Figma popups next.
                 onReviewClick = {
-                    // Review popup
+                    // Existing review popup placeholder.
                 },
-
                 onAssignClick = {
-                    // Assign popup
+                    // Existing assign popup placeholder.
                 },
-
                 onViewClick = {
-                    // View popup
+                    // Existing view popup placeholder.
                 }
             )
         }
@@ -189,58 +265,30 @@ fun AppNavigation() {
         // =====================================================
 
         composable(Routes.COLLECTORS) {
-
             CollectorsScreen(
-
-                // BELL
                 onNotificationClick = {
-                    navController.navigate(
-                        Routes.NOTIFICATIONS
-                    )
+                    navController.navigate(Routes.NOTIFICATIONS)
                 },
-
-                // PROFILE
                 onProfileClick = {
-                    navController.navigate(
-                        Routes.PROFILE
-                    )
+                    navController.navigate(Routes.PROFILE)
                 },
-
-                // SIDEBAR
                 onDashboardClick = {
-                    navController.navigate(
-                        Routes.DASHBOARD
-                    )
+                    navController.navigate(Routes.DASHBOARD)
                 },
-
                 onWasteReportClick = {
-                    navController.navigate(
-                        Routes.WASTE_REPORT
-                    )
+                    navController.navigate(Routes.WASTE_REPORT)
                 },
-
                 onResidentsClick = {
-                    navController.navigate(
-                        Routes.RESIDENTS
-                    )
+                    navController.navigate(Routes.RESIDENTS)
                 },
-
                 onScheduleClick = {
-                    navController.navigate(
-                        Routes.SCHEDULE
-                    )
+                    navController.navigate(Routes.SCHEDULE)
                 },
-
                 onAnalyticsClick = {
-                    navController.navigate(
-                        Routes.ANALYTICS
-                    )
+                    navController.navigate(Routes.ANALYTICS)
                 },
-
                 onWasteGuideClick = {
-                    navController.navigate(
-                        Routes.WASTE_GUIDE
-                    )
+                    navController.navigate(Routes.WASTE_GUIDE)
                 }
             )
         }
@@ -250,58 +298,30 @@ fun AppNavigation() {
         // =====================================================
 
         composable(Routes.RESIDENTS) {
-
             ResidentsScreen(
-
-                // BELL
                 onNotificationClick = {
-                    navController.navigate(
-                        Routes.NOTIFICATIONS
-                    )
+                    navController.navigate(Routes.NOTIFICATIONS)
                 },
-
-                // PROFILE
                 onProfileClick = {
-                    navController.navigate(
-                        Routes.PROFILE
-                    )
+                    navController.navigate(Routes.PROFILE)
                 },
-
-                // SIDEBAR
                 onDashboardClick = {
-                    navController.navigate(
-                        Routes.DASHBOARD
-                    )
+                    navController.navigate(Routes.DASHBOARD)
                 },
-
                 onWasteReportClick = {
-                    navController.navigate(
-                        Routes.WASTE_REPORT
-                    )
+                    navController.navigate(Routes.WASTE_REPORT)
                 },
-
                 onCollectorsClick = {
-                    navController.navigate(
-                        Routes.COLLECTORS
-                    )
+                    navController.navigate(Routes.COLLECTORS)
                 },
-
                 onScheduleClick = {
-                    navController.navigate(
-                        Routes.SCHEDULE
-                    )
+                    navController.navigate(Routes.SCHEDULE)
                 },
-
                 onAnalyticsClick = {
-                    navController.navigate(
-                        Routes.ANALYTICS
-                    )
+                    navController.navigate(Routes.ANALYTICS)
                 },
-
                 onWasteGuideClick = {
-                    navController.navigate(
-                        Routes.WASTE_GUIDE
-                    )
+                    navController.navigate(Routes.WASTE_GUIDE)
                 }
             )
         }
@@ -311,58 +331,30 @@ fun AppNavigation() {
         // =====================================================
 
         composable(Routes.SCHEDULE) {
-
             ScheduleScreen(
-
-                // BELL
                 onNotificationClick = {
-                    navController.navigate(
-                        Routes.NOTIFICATIONS
-                    )
+                    navController.navigate(Routes.NOTIFICATIONS)
                 },
-
-                // PROFILE
                 onProfileClick = {
-                    navController.navigate(
-                        Routes.PROFILE
-                    )
+                    navController.navigate(Routes.PROFILE)
                 },
-
-                // SIDEBAR
                 onDashboardClick = {
-                    navController.navigate(
-                        Routes.DASHBOARD
-                    )
+                    navController.navigate(Routes.DASHBOARD)
                 },
-
                 onWasteReportClick = {
-                    navController.navigate(
-                        Routes.WASTE_REPORT
-                    )
+                    navController.navigate(Routes.WASTE_REPORT)
                 },
-
                 onCollectorsClick = {
-                    navController.navigate(
-                        Routes.COLLECTORS
-                    )
+                    navController.navigate(Routes.COLLECTORS)
                 },
-
                 onResidentsClick = {
-                    navController.navigate(
-                        Routes.RESIDENTS
-                    )
+                    navController.navigate(Routes.RESIDENTS)
                 },
-
                 onAnalyticsClick = {
-                    navController.navigate(
-                        Routes.ANALYTICS
-                    )
+                    navController.navigate(Routes.ANALYTICS)
                 },
-
                 onWasteGuideClick = {
-                    navController.navigate(
-                        Routes.WASTE_GUIDE
-                    )
+                    navController.navigate(Routes.WASTE_GUIDE)
                 }
             )
         }
@@ -373,61 +365,29 @@ fun AppNavigation() {
 
         composable(Routes.ANALYTICS) {
             AnalyticsScreen(
-
-                // BELL
                 onNotificationClick = {
-                    navController.navigate(
-                        Routes.NOTIFICATIONS
-                    )
+                    navController.navigate(Routes.NOTIFICATIONS)
                 },
-
-                // PROFILE
                 onProfileClick = {
-                    navController.navigate(
-                        Routes.PROFILE
-                    )
+                    navController.navigate(Routes.PROFILE)
                 },
-
-                // DASHBOARD
                 onDashboardClick = {
-                    navController.navigate(
-                        Routes.DASHBOARD
-                    )
+                    navController.navigate(Routes.DASHBOARD)
                 },
-
-                // WASTE REPORT
                 onWasteReportClick = {
-                    navController.navigate(
-                        Routes.WASTE_REPORT
-                    )
+                    navController.navigate(Routes.WASTE_REPORT)
                 },
-
-                // COLLECTORS
                 onCollectorsClick = {
-                    navController.navigate(
-                        Routes.COLLECTORS
-                    )
+                    navController.navigate(Routes.COLLECTORS)
                 },
-
-                // RESIDENTS
                 onResidentsClick = {
-                    navController.navigate(
-                        Routes.RESIDENTS
-                    )
+                    navController.navigate(Routes.RESIDENTS)
                 },
-
-                // SCHEDULES
                 onScheduleClick = {
-                    navController.navigate(
-                        Routes.SCHEDULE
-                    )
+                    navController.navigate(Routes.SCHEDULE)
                 },
-
-                // WASTE GUIDE
                 onWasteGuideClick = {
-                    navController.navigate(
-                        Routes.WASTE_GUIDE
-                    )
+                    navController.navigate(Routes.WASTE_GUIDE)
                 }
             )
         }
@@ -438,61 +398,29 @@ fun AppNavigation() {
 
         composable(Routes.WASTE_GUIDE) {
             WasteGuideScreen(
-
-                // BELL
                 onNotificationClick = {
-                    navController.navigate(
-                        Routes.NOTIFICATIONS
-                    )
+                    navController.navigate(Routes.NOTIFICATIONS)
                 },
-
-                // PROFILE
                 onProfileClick = {
-                    navController.navigate(
-                        Routes.PROFILE
-                    )
+                    navController.navigate(Routes.PROFILE)
                 },
-
-                // DASHBOARD
                 onDashboardClick = {
-                    navController.navigate(
-                        Routes.DASHBOARD
-                    )
+                    navController.navigate(Routes.DASHBOARD)
                 },
-
-                // WASTE REPORT
                 onWasteReportClick = {
-                    navController.navigate(
-                        Routes.WASTE_REPORT
-                    )
+                    navController.navigate(Routes.WASTE_REPORT)
                 },
-
-                // COLLECTORS
                 onCollectorsClick = {
-                    navController.navigate(
-                        Routes.COLLECTORS
-                    )
+                    navController.navigate(Routes.COLLECTORS)
                 },
-
-                // RESIDENTS
                 onResidentsClick = {
-                    navController.navigate(
-                        Routes.RESIDENTS
-                    )
+                    navController.navigate(Routes.RESIDENTS)
                 },
-
-                // SCHEDULES
                 onScheduleClick = {
-                    navController.navigate(
-                        Routes.SCHEDULE
-                    )
+                    navController.navigate(Routes.SCHEDULE)
                 },
-
-                // ANALYTICS
                 onAnalyticsClick = {
-                    navController.navigate(
-                        Routes.ANALYTICS
-                    )
+                    navController.navigate(Routes.ANALYTICS)
                 }
             )
         }
@@ -503,68 +431,32 @@ fun AppNavigation() {
 
         composable(Routes.NOTIFICATIONS) {
             NotificationsScreen(
-
-                // DASHBOARD
                 onDashboardClick = {
-                    navController.navigate(
-                        Routes.DASHBOARD
-                    )
+                    navController.navigate(Routes.DASHBOARD)
                 },
-
-                // WASTE REPORT
                 onWasteReportClick = {
-                    navController.navigate(
-                        Routes.WASTE_REPORT
-                    )
+                    navController.navigate(Routes.WASTE_REPORT)
                 },
-
-                // COLLECTORS
                 onCollectorsClick = {
-                    navController.navigate(
-                        Routes.COLLECTORS
-                    )
+                    navController.navigate(Routes.COLLECTORS)
                 },
-
-                // RESIDENTS
                 onResidentsClick = {
-                    navController.navigate(
-                        Routes.RESIDENTS
-                    )
+                    navController.navigate(Routes.RESIDENTS)
                 },
-
-                // SCHEDULES
                 onScheduleClick = {
-                    navController.navigate(
-                        Routes.SCHEDULE
-                    )
+                    navController.navigate(Routes.SCHEDULE)
                 },
-
-                // ANALYTICS
                 onAnalyticsClick = {
-                    navController.navigate(
-                        Routes.ANALYTICS
-                    )
+                    navController.navigate(Routes.ANALYTICS)
                 },
-
-                // WASTE GUIDE
                 onWasteGuideClick = {
-                    navController.navigate(
-                        Routes.WASTE_GUIDE
-                    )
+                    navController.navigate(Routes.WASTE_GUIDE)
                 },
-
-                // BELL
                 onNotificationClick = {
-                    navController.navigate(
-                        Routes.NOTIFICATIONS
-                    )
+                    navController.navigate(Routes.NOTIFICATIONS)
                 },
-
-                // PROFILE
                 onProfileClick = {
-                    navController.navigate(
-                        Routes.PROFILE
-                    )
+                    navController.navigate(Routes.PROFILE)
                 }
             )
         }
@@ -574,55 +466,30 @@ fun AppNavigation() {
         // =====================================================
 
         composable(Routes.PROFILE) {
-
             ProfileScreen(
-
                 onDashboardClick = {
-                    navController.navigate(
-                        Routes.DASHBOARD
-                    )
+                    navController.navigate(Routes.DASHBOARD)
                 },
-
                 onWasteReportClick = {
-                    navController.navigate(
-                        Routes.WASTE_REPORT
-                    )
+                    navController.navigate(Routes.WASTE_REPORT)
                 },
-
                 onCollectorsClick = {
-                    navController.navigate(
-                        Routes.COLLECTORS
-                    )
+                    navController.navigate(Routes.COLLECTORS)
                 },
-
                 onResidentsClick = {
-                    navController.navigate(
-                        Routes.RESIDENTS
-                    )
+                    navController.navigate(Routes.RESIDENTS)
                 },
-
                 onScheduleClick = {
-                    navController.navigate(
-                        Routes.SCHEDULE
-                    )
+                    navController.navigate(Routes.SCHEDULE)
                 },
-
                 onAnalyticsClick = {
-                    navController.navigate(
-                        Routes.ANALYTICS
-                    )
+                    navController.navigate(Routes.ANALYTICS)
                 },
-
                 onWasteGuideClick = {
-                    navController.navigate(
-                        Routes.WASTE_GUIDE
-                    )
+                    navController.navigate(Routes.WASTE_GUIDE)
                 },
-
                 onNotificationClick = {
-                    navController.navigate(
-                        Routes.NOTIFICATIONS
-                    )
+                    navController.navigate(Routes.NOTIFICATIONS)
                 }
             )
         }

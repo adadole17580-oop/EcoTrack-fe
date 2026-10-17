@@ -15,9 +15,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-
             MyApplicationTheme {
-
                 AppNavigation()
             }
         }
