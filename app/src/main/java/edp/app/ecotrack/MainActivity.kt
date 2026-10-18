@@ -16,11 +16,8 @@ class MainActivity : ComponentActivity() {
         handleAuthDeepLink(intent)
 
         setContent {
-            MaterialTheme {
-                Surface(
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    EcoTrackNavigation()
+            EcoTrackTheme {
+                AuthNavigation()
                 }
             }
         }
