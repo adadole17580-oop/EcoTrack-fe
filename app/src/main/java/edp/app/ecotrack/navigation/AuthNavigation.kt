@@ -174,7 +174,9 @@ fun AuthNavigation() {
         }
 
        composable(AuthRoutes.HOME) {
-            EcoTrackApp()
+            EcoTrackApp(
+
+            )
         }
 
         composable(AuthRoutes.COLLECTOR_HOME) {
@@ -188,6 +190,45 @@ fun AuthNavigation() {
                     }
                 }
             )
+        }
+    }
+}
+
+@Composable
+fun EcoTrackApp(
+    onLogout: () -> Unit = {}
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "EcoTrack",
+            style = MaterialTheme.typography.headlineMedium
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "Resident Dashboard",
+            style = MaterialTheme.typography.titleLarge
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Welcome! You are logged in as a resident."
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onLogout
+        ) {
+            Text("Log Out")
         }
     }
 }

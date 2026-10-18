@@ -4,10 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import edp.app.ecotrack.navigation.EcoTrackNavigation
 import edp.app.ecotrack.navigation.AuthNavigation
+import edp.app.ecotrack.ui.theme.EcoTrackTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -19,7 +17,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             EcoTrackTheme {
                 AuthNavigation()
-                }
             }
         }
     }

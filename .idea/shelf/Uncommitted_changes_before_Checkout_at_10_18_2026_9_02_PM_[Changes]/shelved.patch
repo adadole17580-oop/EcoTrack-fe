@@ -1,0 +1,2378 @@
+Index: app/src/main/java/edp/app/ecotrack/screens/HomeScreen.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package edp.app.ecotrack.screens\r\n\r\nimport androidx.compose.foundation.background\r\nimport androidx.compose.foundation.clickable\r\nimport androidx.compose.foundation.layout.Arrangement\r\nimport androidx.compose.foundation.layout.Box\r\nimport androidx.compose.foundation.layout.Column\r\nimport androidx.compose.foundation.layout.Row\r\nimport androidx.compose.foundation.layout.Spacer\r\nimport androidx.compose.foundation.layout.fillMaxSize\r\nimport androidx.compose.foundation.layout.fillMaxWidth\r\nimport androidx.compose.foundation.layout.height\r\nimport androidx.compose.foundation.layout.padding\r\nimport androidx.compose.foundation.layout.size\r\nimport androidx.compose.foundation.layout.width\r\nimport androidx.compose.foundation.rememberScrollState\r\nimport androidx.compose.foundation.shape.CircleShape\r\nimport androidx.compose.foundation.shape.RoundedCornerShape\r\nimport androidx.compose.foundation.verticalScroll\r\nimport androidx.compose.material.icons.Icons\r\nimport androidx.compose.material.icons.filled.CalendarMonth\r\nimport androidx.compose.material.icons.filled.ChevronRight\r\nimport androidx.compose.material.icons.filled.DeleteOutline\r\nimport androidx.compose.material.icons.filled.NotificationsNone\r\nimport androidx.compose.material.icons.filled.PersonOutline\r\nimport androidx.compose.material.icons.filled.Recycling\r\nimport androidx.compose.material.icons.filled.Report\r\nimport androidx.compose.material3.Card\r\nimport androidx.compose.material3.CardDefaults\r\nimport androidx.compose.material3.Icon\r\nimport androidx.compose.material3.IconButton\r\nimport androidx.compose.material3.MaterialTheme\r\nimport androidx.compose.material3.Text\r\nimport androidx.compose.runtime.Composable\r\nimport androidx.compose.ui.Alignment\r\nimport androidx.compose.ui.Modifier\r\nimport androidx.compose.ui.draw.clip\r\nimport androidx.compose.ui.draw.clip\r\nimport androidx.compose.ui.graphics.Color\r\nimport androidx.compose.ui.tooling.preview.Preview\r\nimport androidx.compose.ui.unit.dp\r\nimport edp.app.ecotrack.components.QuickAction\r\nimport edp.app.ecotrack.ui.theme.EcoDarkGreen\r\nimport edp.app.ecotrack.ui.theme.EcoGreen\r\nimport edp.app.ecotrack.ui.theme.EcoLightGreen\r\nimport edp.app.ecotrack.ui.theme.EcoPaleGreen\r\nimport edp.app.ecotrack.ui.theme.EcoResolvedGreen\r\n\r\n@Composable\r\nfun HomeScreen(\r\n    modifier: Modifier = Modifier,\r\n    onScheduleClick: () -> Unit = {},\r\n    onReportClick: () -> Unit = {},\r\n    onGuideClick: () -> Unit = {},\r\n    onProfileClick: () -> Unit = {},\r\n    onNotificationClick: () -> Unit = {},\r\n    onViewAllReportsClick: () -> Unit = {}\r\n) {\r\n\r\n    Column(\r\n        modifier = modifier\r\n            .fillMaxSize()\r\n            .background(MaterialTheme.colorScheme.background)\r\n            .verticalScroll(rememberScrollState())\r\n    ) {\r\n\r\n        Row(\r\n            modifier = Modifier\r\n                .fillMaxWidth()\r\n                .background(EcoDarkGreen)\r\n                .padding(\r\n                    start = 24.dp,\r\n                    end = 16.dp,\r\n                    top = 32.dp,\r\n                    bottom = 24.dp\r\n                ),\r\n            verticalAlignment = Alignment.CenterVertically\r\n        ) {\r\n\r\n            Column(\r\n                modifier = Modifier.weight(1f)\r\n            ) {\r\n\r\n                Text(\r\n                    text = \"Good morning \uD83D\uDC4B\",\r\n                    color = Color.White,\r\n                    style = MaterialTheme.typography.bodyMedium\r\n                )\r\n\r\n                Spacer(\r\n                    modifier = Modifier.height(4.dp)\r\n                )\r\n\r\n                Text(\r\n                    text = \"Shania Castro\",\r\n                    color = Color.White,\r\n                    style = MaterialTheme.typography.headlineMedium\r\n                )\r\n\r\n                Spacer(\r\n                    modifier = Modifier.height(5.dp)\r\n                )\r\n\r\n                Text(\r\n                    text = \"Barangay Bulua, Zone 10\",\r\n                    color = Color.White.copy(alpha = 0.8f),\r\n                    style = MaterialTheme.typography.bodySmall\r\n                )\r\n            }\r\n\r\n            Box {\r\n\r\n                IconButton(\r\n                    onClick = onNotificationClick\r\n                ) {\r\n                    Icon(\r\n                        imageVector = Icons.Default.NotificationsNone,\r\n                        contentDescription = \"Notifications\",\r\n                        tint = Color.White,\r\n                        modifier = Modifier.size(27.dp)\r\n                    )\r\n                }\r\n\r\n                Box(\r\n                    modifier = Modifier\r\n                        .size(7.dp)\r\n                        .clip(CircleShape)\r\n                        .background(Color(0xFFFF6B6B))\r\n                        .align(Alignment.TopEnd)\r\n                )\r\n            }\r\n        }\r\n\r\n        Spacer(\r\n            modifier = Modifier.height(20.dp)\r\n        )\r\n\r\n        Text(\r\n            text = \"NEXT COLLECTION\",\r\n            modifier = Modifier.padding(horizontal = 24.dp),\r\n            color = EcoDarkGreen,\r\n            style = MaterialTheme.typography.labelMedium\r\n        )\r\n\r\n        Spacer(\r\n            modifier = Modifier.height(8.dp)\r\n        )\r\n\r\n        Card(\r\n            modifier = Modifier\r\n                .fillMaxWidth()\r\n                .padding(horizontal = 24.dp),\r\n            shape = RoundedCornerShape(14.dp),\r\n            colors = CardDefaults.cardColors(\r\n                containerColor = MaterialTheme.colorScheme.surface\r\n            ),\r\n            elevation = CardDefaults.cardElevation(\r\n                defaultElevation = 2.dp\r\n            )\r\n        ) {\r\n\r\n            Row(\r\n                modifier = Modifier\r\n                    .fillMaxWidth()\r\n                    .padding(17.dp),\r\n                verticalAlignment = Alignment.CenterVertically\r\n            ) {\r\n\r\n                Box(\r\n                    modifier = Modifier\r\n                        .size(48.dp)\r\n                        .clip(RoundedCornerShape(12.dp))\r\n                        .background(EcoLightGreen),\r\n                    contentAlignment = Alignment.Center\r\n                ) {\r\n\r\n                    Icon(\r\n                        imageVector = Icons.Default.Recycling,\r\n                        contentDescription = \"Biodegradable\",\r\n                        tint = EcoGreen,\r\n                        modifier = Modifier.size(26.dp)\r\n                    )\r\n                }\r\n\r\n                Spacer(\r\n                    modifier = Modifier.width(14.dp)\r\n                )\r\n\r\n                Column(\r\n                    modifier = Modifier.weight(1f)\r\n                ) {\r\n\r\n                    Text(\r\n                        text = \"Monday, Sep 16\",\r\n                        color = EcoDarkGreen,\r\n                        style = MaterialTheme.typography.titleMedium\r\n                    )\r\n\r\n                    Spacer(\r\n                        modifier = Modifier.height(4.dp)\r\n                    )\r\n\r\n                    Text(\r\n                        text = \"Biodegradable\",\r\n                        color = MaterialTheme.colorScheme.onSurfaceVariant,\r\n                        style = MaterialTheme.typography.bodySmall\r\n                    )\r\n\r\n                    Spacer(\r\n                        modifier = Modifier.height(3.dp)\r\n                    )\r\n\r\n                    Text(\r\n                        text = \"6:00 AM - 9:00 AM\",\r\n                        color = MaterialTheme.colorScheme.onSurfaceVariant,\r\n                        style = MaterialTheme.typography.bodySmall\r\n                    )\r\n                }\r\n\r\n                Icon(\r\n                    imageVector = Icons.Default.ChevronRight,\r\n                    contentDescription = \"View schedule\",\r\n                    tint = EcoGreen,\r\n                    modifier = Modifier.size(22.dp)\r\n                )\r\n            }\r\n        }\r\n\r\n        Spacer(\r\n            modifier = Modifier.height(22.dp)\r\n        )\r\n\r\n        Text(\r\n            text = \"QUICK ACTIONS\",\r\n            modifier = Modifier.padding(horizontal = 24.dp),\r\n            color = EcoDarkGreen,\r\n            style = MaterialTheme.typography.labelMedium\r\n        )\r\n\r\n        Spacer(\r\n            modifier = Modifier.height(10.dp)\r\n        )\r\n\r\n        Row(\r\n            modifier = Modifier\r\n                .fillMaxWidth()\r\n                .padding(horizontal = 24.dp),\r\n            horizontalArrangement = Arrangement.spacedBy(10.dp)\r\n        ) {\r\n\r\n            QuickAction(\r\n                modifier = Modifier.weight(1f),\r\n                icon = Icons.Default.CalendarMonth,\r\n                label = \"Schedule\",\r\n                onClick = onScheduleClick\r\n            )\r\n\r\n            QuickAction(\r\n                modifier = Modifier.weight(1f),\r\n                icon = Icons.Default.Report,\r\n                label = \"Report\",\r\n                onClick = onReportClick\r\n            )\r\n\r\n            QuickAction(\r\n                modifier = Modifier.weight(1f),\r\n                icon = Icons.Default.Recycling,\r\n                label = \"Guide\",\r\n                onClick = onGuideClick\r\n            )\r\n\r\n            QuickAction(\r\n                modifier = Modifier.weight(1f),\r\n                icon = Icons.Default.PersonOutline,\r\n                label = \"Profile\",\r\n                onClick = onProfileClick\r\n            )\r\n        }\r\n\r\n        Spacer(\r\n            modifier = Modifier.height(25.dp)\r\n        )\r\n\r\n        Row(\r\n            modifier = Modifier\r\n                .fillMaxWidth()\r\n                .padding(horizontal = 24.dp),\r\n            verticalAlignment = Alignment.CenterVertically\r\n        ) {\r\n\r\n            Text(\r\n                text = \"RECENT REPORTS\",\r\n                color = EcoDarkGreen,\r\n                style = MaterialTheme.typography.labelMedium,\r\n                modifier = Modifier.weight(1f)\r\n            )\r\n\r\n            Text(\r\n                text = \"View all\",\r\n                color = EcoGreen,\r\n                style = MaterialTheme.typography.labelSmall,\r\n                modifier = Modifier.clickable {\r\n                    onViewAllReportsClick()\r\n                }\r\n            )\r\n        }\r\n\r\n        Spacer(\r\n            modifier = Modifier.height(10.dp)\r\n        )\r\n\r\n        ReportItem(\r\n            icon = Icons.Default.DeleteOutline,\r\n            title = \"Overflowing Trash Bin\",\r\n            location = \"Zone 7, Bulua\",\r\n            status = \"Resolved\",\r\n            statusColor = EcoResolvedGreen\r\n        )\r\n\r\n        ReportItem(\r\n            icon = Icons.Default.Report,\r\n            title = \"Missed Collection\",\r\n            location = \"Zone 8, Bulua\",\r\n            status = \"Pending\",\r\n            statusColor = Color(0xFFE89A32)\r\n        )\r\n\r\n        Spacer(\r\n            modifier = Modifier.height(20.dp)\r\n        )\r\n\r\n        Card(\r\n            modifier = Modifier\r\n                .fillMaxWidth()\r\n                .padding(horizontal = 24.dp),\r\n            shape = RoundedCornerShape(14.dp),\r\n            colors = CardDefaults.cardColors(\r\n                containerColor = EcoPaleGreen\r\n            )\r\n        ) {\r\n\r\n            Row(\r\n                modifier = Modifier.padding(16.dp),\r\n                verticalAlignment = Alignment.CenterVertically\r\n            ) {\r\n\r\n                Box(\r\n                    modifier = Modifier\r\n                        .size(42.dp)\r\n                        .clip(CircleShape)\r\n                        .background(Color.White),\r\n                    contentAlignment = Alignment.Center\r\n                ) {\r\n\r\n                    Icon(\r\n                        imageVector = Icons.Default.CalendarMonth,\r\n                        contentDescription = \"Reminder\",\r\n                        tint = EcoGreen,\r\n                        modifier = Modifier.size(22.dp)\r\n                    )\r\n                }\r\n\r\n                Spacer(\r\n                    modifier = Modifier.width(12.dp)\r\n                )\r\n\r\n                Column(\r\n                    modifier = Modifier.weight(1f)\r\n                ) {\r\n\r\n                    Text(\r\n                        text = \"Collection Reminder\",\r\n                        color = EcoDarkGreen,\r\n                        style = MaterialTheme.typography.bodyMedium\r\n                    )\r\n\r\n                    Spacer(\r\n                        modifier = Modifier.height(3.dp)\r\n                    )\r\n\r\n                    Text(\r\n                        text = \"Your next collection is on Monday.\",\r\n                        color = MaterialTheme.colorScheme.onSurfaceVariant,\r\n                        style = MaterialTheme.typography.bodySmall\r\n                    )\r\n                }\r\n            }\r\n        }\r\n\r\n        Spacer(\r\n            modifier = Modifier.height(25.dp)\r\n        )\r\n    }\r\n}\r\n\r\n@Composable\r\nprivate fun ReportItem(\r\n    icon: androidx.compose.ui.graphics.vector.ImageVector,\r\n    title: String,\r\n    location: String,\r\n    status: String,\r\n    statusColor: Color\r\n) {\r\n\r\n    Card(\r\n        modifier = Modifier\r\n            .fillMaxWidth()\r\n            .padding(\r\n                horizontal = 24.dp,\r\n                vertical = 5.dp\r\n            ),\r\n        shape = RoundedCornerShape(11.dp),\r\n        colors = CardDefaults.cardColors(\r\n            containerColor = MaterialTheme.colorScheme.surface\r\n        )\r\n    ) {\r\n\r\n        Row(\r\n            modifier = Modifier\r\n                .fillMaxWidth()\r\n                .padding(13.dp),\r\n            verticalAlignment = Alignment.CenterVertically\r\n        ) {\r\n\r\n            Box(\r\n                modifier = Modifier\r\n                    .size(38.dp)\r\n                    .clip(RoundedCornerShape(9.dp))\r\n                    .background(EcoLightGreen),\r\n                contentAlignment = Alignment.Center\r\n            ) {\r\n\r\n                Icon(\r\n                    imageVector = icon,\r\n                    contentDescription = title,\r\n                    tint = EcoGreen,\r\n                    modifier = Modifier.size(20.dp)\r\n                )\r\n            }\r\n\r\n            Spacer(\r\n                modifier = Modifier.width(11.dp)\r\n            )\r\n\r\n            Column(\r\n                modifier = Modifier.weight(1f)\r\n            ) {\r\n\r\n                Text(\r\n                    text = title,\r\n                    color = EcoDarkGreen,\r\n                    style = MaterialTheme.typography.bodySmall\r\n                )\r\n\r\n                Spacer(\r\n                    modifier = Modifier.height(3.dp)\r\n                )\r\n\r\n                Text(\r\n                    text = location,\r\n                    color = MaterialTheme.colorScheme.onSurfaceVariant,\r\n                    style = MaterialTheme.typography.labelSmall\r\n                )\r\n            }\r\n\r\n            Text(\r\n                text = status,\r\n                color = statusColor,\r\n                style = MaterialTheme.typography.labelSmall\r\n            )\r\n        }\r\n    }\r\n}\r\n\r\n@Preview(\r\n    showBackground = true,\r\n    showSystemUi = true,\r\n    widthDp = 360,\r\n    heightDp = 800\r\n)\r\n@Composable\r\nfun HomeScreenPreview() {\r\n    HomeScreen()\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/edp/app/ecotrack/screens/HomeScreen.kt b/app/src/main/java/edp/app/ecotrack/screens/HomeScreen.kt
+--- a/app/src/main/java/edp/app/ecotrack/screens/HomeScreen.kt	(revision 20f779bbee69f862d79e8038afeea4ccc1174da4)
++++ b/app/src/main/java/edp/app/ecotrack/screens/HomeScreen.kt	(date 1792239381250)
+@@ -27,28 +27,38 @@
+ import androidx.compose.material.icons.filled.Report
+ import androidx.compose.material3.Card
+ import androidx.compose.material3.CardDefaults
++import androidx.compose.material3.CircularProgressIndicator
+ import androidx.compose.material3.Icon
+ import androidx.compose.material3.IconButton
+ import androidx.compose.material3.MaterialTheme
+ import androidx.compose.material3.Text
+ import androidx.compose.runtime.Composable
++import androidx.compose.runtime.LaunchedEffect
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.remember
++import androidx.compose.runtime.setValue
+ import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
+-import androidx.compose.ui.draw.clip
+ import androidx.compose.ui.draw.clip
+ import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.graphics.vector.ImageVector
+ import androidx.compose.ui.tooling.preview.Preview
+ import androidx.compose.ui.unit.dp
++import edp.app.ecotrack.RetrofitClient
++import edp.app.ecotrack.ResidentHomescreenResponse
+ import edp.app.ecotrack.components.QuickAction
+ import edp.app.ecotrack.ui.theme.EcoDarkGreen
+ import edp.app.ecotrack.ui.theme.EcoGreen
+ import edp.app.ecotrack.ui.theme.EcoLightGreen
+ import edp.app.ecotrack.ui.theme.EcoPaleGreen
+ import edp.app.ecotrack.ui.theme.EcoResolvedGreen
++import kotlinx.coroutines.CancellationException
+ 
+ @Composable
+ fun HomeScreen(
+     modifier: Modifier = Modifier,
++    accessToken: String? = null,
+     onScheduleClick: () -> Unit = {},
+     onReportClick: () -> Unit = {},
+     onGuideClick: () -> Unit = {},
+@@ -56,6 +66,43 @@
+     onNotificationClick: () -> Unit = {},
+     onViewAllReportsClick: () -> Unit = {}
+ ) {
++    var residentDashboard by remember {
++        mutableStateOf<ResidentHomescreenResponse?>(null)
++    }
++
++    var dashboardError by remember {
++        mutableStateOf<String?>(null)
++    }
++
++    var isLoading by remember {
++        mutableStateOf(false)
++    }
++
++    LaunchedEffect(accessToken) {
++        residentDashboard = null
++        dashboardError = null
++
++        if (accessToken.isNullOrBlank()) {
++            dashboardError = "Please sign in to load your dashboard."
++            isLoading = false
++            return@LaunchedEffect
++        }
++
++        isLoading = true
++
++        try {
++            residentDashboard = RetrofitClient.residentApi.getDashboard(
++                authorization = "Bearer $accessToken"
++            )
++        } catch (e: CancellationException) {
++            throw e
++        } catch (e: Exception) {
++            dashboardError =
++                "Unable to load your dashboard. Check your connection or sign in again."
++        } finally {
++            isLoading = false
++        }
++    }
+ 
+     Column(
+         modifier = modifier
+@@ -64,6 +111,7 @@
+             .verticalScroll(rememberScrollState())
+     ) {
+ 
++        // Welcome header
+         Row(
+             modifier = Modifier
+                 .fillMaxWidth()
+@@ -76,43 +124,37 @@
+                 ),
+             verticalAlignment = Alignment.CenterVertically
+         ) {
+-
+             Column(
+                 modifier = Modifier.weight(1f)
+             ) {
+-
+                 Text(
+                     text = "Good morning 👋",
+                     color = Color.White,
+                     style = MaterialTheme.typography.bodyMedium
+                 )
+ 
+-                Spacer(
+-                    modifier = Modifier.height(4.dp)
+-                )
++                Spacer(modifier = Modifier.height(4.dp))
+ 
+                 Text(
+-                    text = "Shania Castro",
++                    text = residentDashboard?.user?.fullName ?: "Resident",
+                     color = Color.White,
+                     style = MaterialTheme.typography.headlineMedium
+                 )
+ 
+-                Spacer(
+-                    modifier = Modifier.height(5.dp)
+-                )
++                Spacer(modifier = Modifier.height(5.dp))
+ 
+                 Text(
+-                    text = "Barangay Bulua, Zone 10",
++                    text = residentDashboard?.user?.barangay
++                        ?.takeIf { it.isNotBlank() }
++                        ?.let { "Barangay $it" }
++                        ?: "Barangay not set",
+                     color = Color.White.copy(alpha = 0.8f),
+                     style = MaterialTheme.typography.bodySmall
+                 )
+             }
+ 
+             Box {
+-
+-                IconButton(
+-                    onClick = onNotificationClick
+-                ) {
++                IconButton(onClick = onNotificationClick) {
+                     Icon(
+                         imageVector = Icons.Default.NotificationsNone,
+                         contentDescription = "Notifications",
+@@ -131,10 +173,46 @@
+             }
+         }
+ 
+-        Spacer(
+-            modifier = Modifier.height(20.dp)
+-        )
++        // Loading indicator
++        if (isLoading) {
++            Row(
++                modifier = Modifier
++                    .fillMaxWidth()
++                    .padding(16.dp),
++                horizontalArrangement = Arrangement.Center,
++                verticalAlignment = Alignment.CenterVertically
++            ) {
++                CircularProgressIndicator(
++                    modifier = Modifier.size(20.dp),
++                    color = EcoGreen,
++                    strokeWidth = 2.dp
++                )
++
++                Spacer(modifier = Modifier.width(10.dp))
+ 
++                Text(
++                    text = "Loading your dashboard...",
++                    style = MaterialTheme.typography.bodySmall
++                )
++            }
++        }
++
++        // Dashboard error
++        dashboardError?.let { error ->
++            Text(
++                text = error,
++                modifier = Modifier.padding(
++                    horizontal = 24.dp,
++                    vertical = 12.dp
++                ),
++                color = MaterialTheme.colorScheme.error,
++                style = MaterialTheme.typography.bodySmall
++            )
++        }
++
++        Spacer(modifier = Modifier.height(20.dp))
++
++        // Next collection
+         Text(
+             text = "NEXT COLLECTION",
+             modifier = Modifier.padding(horizontal = 24.dp),
+@@ -142,9 +220,7 @@
+             style = MaterialTheme.typography.labelMedium
+         )
+ 
+-        Spacer(
+-            modifier = Modifier.height(8.dp)
+-        )
++        Spacer(modifier = Modifier.height(8.dp))
+ 
+         Card(
+             modifier = Modifier
+@@ -154,18 +230,14 @@
+             colors = CardDefaults.cardColors(
+                 containerColor = MaterialTheme.colorScheme.surface
+             ),
+-            elevation = CardDefaults.cardElevation(
+-                defaultElevation = 2.dp
+-            )
++            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+         ) {
+-
+             Row(
+                 modifier = Modifier
+                     .fillMaxWidth()
+                     .padding(17.dp),
+                 verticalAlignment = Alignment.CenterVertically
+             ) {
+-
+                 Box(
+                     modifier = Modifier
+                         .size(48.dp)
+@@ -173,7 +245,6 @@
+                         .background(EcoLightGreen),
+                     contentAlignment = Alignment.Center
+                 ) {
+-
+                     Icon(
+                         imageVector = Icons.Default.Recycling,
+                         contentDescription = "Biodegradable",
+@@ -182,23 +253,18 @@
+                     )
+                 }
+ 
+-                Spacer(
+-                    modifier = Modifier.width(14.dp)
+-                )
++                Spacer(modifier = Modifier.width(14.dp))
+ 
+                 Column(
+                     modifier = Modifier.weight(1f)
+                 ) {
+-
+                     Text(
+                         text = "Monday, Sep 16",
+                         color = EcoDarkGreen,
+                         style = MaterialTheme.typography.titleMedium
+                     )
+ 
+-                    Spacer(
+-                        modifier = Modifier.height(4.dp)
+-                    )
++                    Spacer(modifier = Modifier.height(4.dp))
+ 
+                     Text(
+                         text = "Biodegradable",
+@@ -206,9 +272,7 @@
+                         style = MaterialTheme.typography.bodySmall
+                     )
+ 
+-                    Spacer(
+-                        modifier = Modifier.height(3.dp)
+-                    )
++                    Spacer(modifier = Modifier.height(3.dp))
+ 
+                     Text(
+                         text = "6:00 AM - 9:00 AM",
+@@ -226,10 +290,12 @@
+             }
+         }
+ 
+-        Spacer(
+-            modifier = Modifier.height(22.dp)
+-        )
++        // No separate dashboard summary here.
++        // Quick Actions follows Next Collection directly.
+ 
++        Spacer(modifier = Modifier.height(22.dp))
++
++        // Quick Actions
+         Text(
+             text = "QUICK ACTIONS",
+             modifier = Modifier.padding(horizontal = 24.dp),
+@@ -237,9 +303,7 @@
+             style = MaterialTheme.typography.labelMedium
+         )
+ 
+-        Spacer(
+-            modifier = Modifier.height(10.dp)
+-        )
++        Spacer(modifier = Modifier.height(10.dp))
+ 
+         Row(
+             modifier = Modifier
+@@ -247,7 +311,6 @@
+                 .padding(horizontal = 24.dp),
+             horizontalArrangement = Arrangement.spacedBy(10.dp)
+         ) {
+-
+             QuickAction(
+                 modifier = Modifier.weight(1f),
+                 icon = Icons.Default.CalendarMonth,
+@@ -277,17 +340,15 @@
+             )
+         }
+ 
+-        Spacer(
+-            modifier = Modifier.height(25.dp)
+-        )
++        Spacer(modifier = Modifier.height(25.dp))
+ 
++        // Recent reports heading
+         Row(
+             modifier = Modifier
+                 .fillMaxWidth()
+                 .padding(horizontal = 24.dp),
+             verticalAlignment = Alignment.CenterVertically
+         ) {
+-
+             Text(
+                 text = "RECENT REPORTS",
+                 color = EcoDarkGreen,
+@@ -305,9 +366,7 @@
+             )
+         }
+ 
+-        Spacer(
+-            modifier = Modifier.height(10.dp)
+-        )
++        Spacer(modifier = Modifier.height(10.dp))
+ 
+         ReportItem(
+             icon = Icons.Default.DeleteOutline,
+@@ -325,10 +384,9 @@
+             statusColor = Color(0xFFE89A32)
+         )
+ 
+-        Spacer(
+-            modifier = Modifier.height(20.dp)
+-        )
++        Spacer(modifier = Modifier.height(20.dp))
+ 
++        // Collection reminder
+         Card(
+             modifier = Modifier
+                 .fillMaxWidth()
+@@ -338,12 +396,10 @@
+                 containerColor = EcoPaleGreen
+             )
+         ) {
+-
+             Row(
+                 modifier = Modifier.padding(16.dp),
+                 verticalAlignment = Alignment.CenterVertically
+             ) {
+-
+                 Box(
+                     modifier = Modifier
+                         .size(42.dp)
+@@ -351,7 +407,6 @@
+                         .background(Color.White),
+                     contentAlignment = Alignment.Center
+                 ) {
+-
+                     Icon(
+                         imageVector = Icons.Default.CalendarMonth,
+                         contentDescription = "Reminder",
+@@ -360,23 +415,18 @@
+                     )
+                 }
+ 
+-                Spacer(
+-                    modifier = Modifier.width(12.dp)
+-                )
++                Spacer(modifier = Modifier.width(12.dp))
+ 
+                 Column(
+                     modifier = Modifier.weight(1f)
+                 ) {
+-
+                     Text(
+                         text = "Collection Reminder",
+                         color = EcoDarkGreen,
+                         style = MaterialTheme.typography.bodyMedium
+                     )
+ 
+-                    Spacer(
+-                        modifier = Modifier.height(3.dp)
+-                    )
++                    Spacer(modifier = Modifier.height(3.dp))
+ 
+                     Text(
+                         text = "Your next collection is on Monday.",
+@@ -387,21 +437,18 @@
+             }
+         }
+ 
+-        Spacer(
+-            modifier = Modifier.height(25.dp)
+-        )
++        Spacer(modifier = Modifier.height(25.dp))
+     }
+ }
+ 
+ @Composable
+ private fun ReportItem(
+-    icon: androidx.compose.ui.graphics.vector.ImageVector,
++    icon: ImageVector,
+     title: String,
+     location: String,
+     status: String,
+     statusColor: Color
+ ) {
+-
+     Card(
+         modifier = Modifier
+             .fillMaxWidth()
+@@ -414,14 +461,12 @@
+             containerColor = MaterialTheme.colorScheme.surface
+         )
+     ) {
+-
+         Row(
+             modifier = Modifier
+                 .fillMaxWidth()
+                 .padding(13.dp),
+             verticalAlignment = Alignment.CenterVertically
+         ) {
+-
+             Box(
+                 modifier = Modifier
+                     .size(38.dp)
+@@ -429,7 +474,6 @@
+                     .background(EcoLightGreen),
+                 contentAlignment = Alignment.Center
+             ) {
+-
+                 Icon(
+                     imageVector = icon,
+                     contentDescription = title,
+@@ -438,23 +482,18 @@
+                 )
+             }
+ 
+-            Spacer(
+-                modifier = Modifier.width(11.dp)
+-            )
++            Spacer(modifier = Modifier.width(11.dp))
+ 
+             Column(
+                 modifier = Modifier.weight(1f)
+             ) {
+-
+                 Text(
+                     text = title,
+                     color = EcoDarkGreen,
+                     style = MaterialTheme.typography.bodySmall
+                 )
+ 
+-                Spacer(
+-                    modifier = Modifier.height(3.dp)
+-                )
++                Spacer(modifier = Modifier.height(3.dp))
+ 
+                 Text(
+                     text = location,
+@@ -481,4 +520,4 @@
+ @Composable
+ fun HomeScreenPreview() {
+     HomeScreen()
+-}
+\ No newline at end of file
++}
+Index: app/build.gradle.kts
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>plugins {\r\n    alias(libs.plugins.android.application)\r\n    alias(libs.plugins.kotlin.compose)\r\n}\r\n\r\nandroid {\r\n    namespace = \"edp.app.ecotrack\"\r\n    compileSdk {\r\n        version = release(37)\r\n    }\r\n\r\n    defaultConfig {\r\n        applicationId = \"edp.app.ecotrack\"\r\n        minSdk = 32\r\n        targetSdk = 37\r\n        versionCode = 1\r\n        versionName = \"1.0\"\r\n\r\n        testInstrumentationRunner = \"androidx.test.runner.AndroidJUnitRunner\"\r\n    }\r\n\r\n    buildTypes {\r\n        release {\r\n            optimization {\r\n                enable = false\r\n            }\r\n        }\r\n    }\r\n    compileOptions {\r\n        sourceCompatibility = JavaVersion.VERSION_11\r\n        targetCompatibility = JavaVersion.VERSION_11\r\n    }\r\n    buildFeatures {\r\n        compose = true\r\n    }\r\n}\r\n\r\ndependencies {\r\n\r\n    implementation(platform(libs.androidx.compose.bom))\r\n\r\n    implementation(libs.androidx.activity.compose)\r\n    implementation(libs.androidx.compose.material3)\r\n    implementation(libs.androidx.compose.ui)\r\n    implementation(libs.androidx.compose.ui.graphics)\r\n    implementation(libs.androidx.compose.ui.tooling.preview)\r\n\r\n    implementation(\"androidx.compose.material:material-icons-extended\")\r\n    implementation(\"androidx.navigation:navigation-compose:2.9.0\")\r\n\r\n    implementation(libs.androidx.core.ktx)\r\n    implementation(libs.androidx.lifecycle.runtime.ktx)\r\n\r\n    testImplementation(libs.junit)\r\n\r\n    androidTestImplementation(platform(libs.androidx.compose.bom))\r\n    androidTestImplementation(libs.androidx.compose.ui.test.junit4)\r\n    androidTestImplementation(libs.androidx.espresso.core)\r\n    androidTestImplementation(libs.androidx.junit)\r\n\r\n    debugImplementation(libs.androidx.compose.ui.test.manifest)\r\n    debugImplementation(libs.androidx.compose.ui.tooling)\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+--- a/app/build.gradle.kts	(revision 20f779bbee69f862d79e8038afeea4ccc1174da4)
++++ b/app/build.gradle.kts	(date 1792317637520)
+@@ -1,8 +1,22 @@
++import java.util.Properties
++import java.io.FileInputStream
++
+ plugins {
+     alias(libs.plugins.android.application)
+     alias(libs.plugins.kotlin.compose)
+ }
+ 
++val localProperties = Properties()
++val localPropertiesFile = rootProject.file("local.properties")
++
++if (localPropertiesFile.exists()) {
++    localProperties.load(FileInputStream(localPropertiesFile))
++}
++
++val supabaseUrl = localProperties.getProperty("SUPABASE_URL", "")
++val supabasePublishableKey =
++    localProperties.getProperty("SUPABASE_PUBLISHABLE_KEY", "")
++
+ android {
+     namespace = "edp.app.ecotrack"
+     compileSdk {
+@@ -17,6 +31,13 @@
+         versionName = "1.0"
+ 
+         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
++
++        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
++        buildConfigField(
++            "String",
++            "SUPABASE_PUBLISHABLE_KEY",
++            "\"$supabasePublishableKey\""
++        )
+     }
+ 
+     buildTypes {
+@@ -32,6 +53,7 @@
+     }
+     buildFeatures {
+         compose = true
++        buildConfig = true
+     }
+ }
+ 
+@@ -60,4 +82,8 @@
+ 
+     debugImplementation(libs.androidx.compose.ui.test.manifest)
+     debugImplementation(libs.androidx.compose.ui.tooling)
++
++    implementation("com.squareup.retrofit2:retrofit:2.11.0")
++    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
++    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+ }
+\ No newline at end of file
+Index: app/src/main/java/edp/app/ecotrack/navigation/EcoTrackNavigation.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package edp.app.ecotrack.navigation\r\n\r\nimport androidx.compose.animation.EnterTransition\r\nimport androidx.compose.animation.ExitTransition\r\nimport androidx.compose.animation.core.FastOutSlowInEasing\r\nimport androidx.compose.animation.core.tween\r\nimport androidx.compose.animation.slideInHorizontally\r\nimport androidx.compose.animation.slideOutHorizontally\r\nimport androidx.compose.runtime.Composable\r\nimport androidx.compose.runtime.getValue\r\nimport androidx.compose.runtime.mutableStateOf\r\nimport androidx.compose.runtime.remember\r\nimport androidx.compose.runtime.setValue\r\nimport androidx.navigation.NavHostController\r\nimport androidx.navigation.compose.NavHost\r\nimport androidx.navigation.compose.composable\r\nimport edp.app.ecotrack.screens.GuideScreen\r\nimport edp.app.ecotrack.screens.HomeScreen\r\nimport edp.app.ecotrack.screens.NotificationScreen\r\nimport edp.app.ecotrack.screens.ProfileScreen\r\nimport edp.app.ecotrack.screens.ReportScreen\r\nimport edp.app.ecotrack.screens.ScheduleScreen\r\n\r\n@Composable\r\nfun EcoTrackNavigation(\r\n    navController: NavHostController\r\n) {\r\n\r\n    var isSlideAction by remember {\r\n        mutableStateOf(false)\r\n    }\r\n\r\n    NavHost(\r\n        navController = navController,\r\n        startDestination = \"home\",\r\n        enterTransition = { EnterTransition.None },\r\n        exitTransition = { ExitTransition.None },\r\n        popEnterTransition = { EnterTransition.None },\r\n        popExitTransition = { ExitTransition.None }\r\n    ) {\r\n\r\n        composable(\r\n            route = \"home\",\r\n            enterTransition = {\r\n                if (isSlideAction) {\r\n                    slideInHorizontally(\r\n                        initialOffsetX = { -it },\r\n                        animationSpec = tween(300, easing = FastOutSlowInEasing)\r\n                    )\r\n                } else {\r\n                    EnterTransition.None\r\n                }\r\n            },\r\n            exitTransition = {\r\n                if (isSlideAction) {\r\n                    slideOutHorizontally(\r\n                        targetOffsetX = { -it },\r\n                        animationSpec = tween(300, easing = FastOutSlowInEasing)\r\n                    )\r\n                } else {\r\n                    ExitTransition.None\r\n                }\r\n            }\r\n        ) {\r\n\r\n            HomeScreen(\r\n                onScheduleClick = {\r\n                    isSlideAction = true\r\n                    navController.navigate(\"schedule\")\r\n                },\r\n\r\n                onReportClick = {\r\n                    isSlideAction = true\r\n                    navController.navigate(\"report\")\r\n                },\r\n\r\n                onGuideClick = {\r\n                    isSlideAction = true\r\n                    navController.navigate(\"guide\")\r\n                },\r\n\r\n                onProfileClick = {\r\n                    isSlideAction = true\r\n                    navController.navigate(\"profile\")\r\n                },\r\n\r\n                onNotificationClick = {\r\n                    isSlideAction = true\r\n                    navController.navigate(\"notifications\")\r\n                },\r\n\r\n                onViewAllReportsClick = {\r\n                    isSlideAction = true\r\n                    navController.navigate(\"report\")\r\n                }\r\n            )\r\n        }\r\n\r\n        composable(\r\n            route = \"schedule\",\r\n            enterTransition = {\r\n                if (isSlideAction) {\r\n                    slideInHorizontally(\r\n                        initialOffsetX = { it },\r\n                        animationSpec = tween(300, easing = FastOutSlowInEasing)\r\n                    )\r\n                } else {\r\n                    EnterTransition.None\r\n                }\r\n            },\r\n            exitTransition = {\r\n                if (isSlideAction) {\r\n                    slideOutHorizontally(\r\n                        targetOffsetX = { -it },\r\n                        animationSpec = tween(300, easing = FastOutSlowInEasing)\r\n                    )\r\n                } else {\r\n                    ExitTransition.None\r\n                }\r\n            }\r\n        ) {\r\n\r\n            ScheduleScreen()\r\n        }\r\n\r\n        composable(\r\n            route = \"report\",\r\n            enterTransition = {\r\n                if (isSlideAction) {\r\n                    slideInHorizontally(\r\n                        initialOffsetX = { it },\r\n                        animationSpec = tween(300, easing = FastOutSlowInEasing)\r\n                    )\r\n                } else {\r\n                    EnterTransition.None\r\n                }\r\n            },\r\n            exitTransition = {\r\n                if (isSlideAction) {\r\n                    slideOutHorizontally(\r\n                        targetOffsetX = { -it },\r\n                        animationSpec = tween(300, easing = FastOutSlowInEasing)\r\n                    )\r\n                } else {\r\n                    ExitTransition.None\r\n                }\r\n            }\r\n        ) {\r\n\r\n            ReportScreen()\r\n        }\r\n\r\n        composable(\r\n            route = \"guide\",\r\n            enterTransition = {\r\n                if (isSlideAction) {\r\n                    slideInHorizontally(\r\n                        initialOffsetX = { it },\r\n                        animationSpec = tween(300, easing = FastOutSlowInEasing)\r\n                    )\r\n                } else {\r\n                    EnterTransition.None\r\n                }\r\n            },\r\n            exitTransition = {\r\n                if (isSlideAction) {\r\n                    slideOutHorizontally(\r\n                        targetOffsetX = { -it },\r\n                        animationSpec = tween(300, easing = FastOutSlowInEasing)\r\n                    )\r\n                } else {\r\n                    ExitTransition.None\r\n                }\r\n            }\r\n        ) {\r\n\r\n            GuideScreen()\r\n        }\r\n\r\n        composable(\r\n            route = \"profile\",\r\n            enterTransition = {\r\n                if (isSlideAction) {\r\n                    slideInHorizontally(\r\n                        initialOffsetX = { it },\r\n                        animationSpec = tween(300, easing = FastOutSlowInEasing)\r\n                    )\r\n                } else {\r\n                    EnterTransition.None\r\n                }\r\n            },\r\n            exitTransition = {\r\n                if (isSlideAction) {\r\n                    slideOutHorizontally(\r\n                        targetOffsetX = { -it },\r\n                        animationSpec = tween(300, easing = FastOutSlowInEasing)\r\n                    )\r\n                } else {\r\n                    ExitTransition.None\r\n                }\r\n            }\r\n        ) {\r\n\r\n            ProfileScreen(\r\n                onNotificationsClick = {\r\n                    isSlideAction = true\r\n                    navController.navigate(\"notifications\")\r\n                }\r\n            )\r\n        }\r\n\r\n        composable(\r\n            route = \"notifications\",\r\n            enterTransition = {\r\n                slideInHorizontally(\r\n                    initialOffsetX = { it },\r\n                    animationSpec = tween(300, easing = FastOutSlowInEasing)\r\n                )\r\n            },\r\n            exitTransition = {\r\n                slideOutHorizontally(\r\n                    targetOffsetX = { it },\r\n                    animationSpec = tween(300, easing = FastOutSlowInEasing)\r\n                )\r\n            },\r\n            popEnterTransition = {\r\n                slideInHorizontally(\r\n                    initialOffsetX = { -it },\r\n                    animationSpec = tween(300, easing = FastOutSlowInEasing)\r\n                )\r\n            },\r\n            popExitTransition = {\r\n                slideOutHorizontally(\r\n                    targetOffsetX = { it },\r\n                    animationSpec = tween(300, easing = FastOutSlowInEasing)\r\n                )\r\n            }\r\n        ) {\r\n\r\n            NotificationScreen(\r\n                onBackToHome = {\r\n                    isSlideAction = false\r\n                    navController.navigate(\"home\")\r\n                }\r\n            )\r\n        }\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/edp/app/ecotrack/navigation/EcoTrackNavigation.kt b/app/src/main/java/edp/app/ecotrack/navigation/EcoTrackNavigation.kt
+--- a/app/src/main/java/edp/app/ecotrack/navigation/EcoTrackNavigation.kt	(revision 20f779bbee69f862d79e8038afeea4ccc1174da4)
++++ b/app/src/main/java/edp/app/ecotrack/navigation/EcoTrackNavigation.kt	(date 1792244667127)
+@@ -23,12 +23,10 @@
+ 
+ @Composable
+ fun EcoTrackNavigation(
+-    navController: NavHostController
++    navController: NavHostController,
++    accessToken: String
+ ) {
+-
+-    var isSlideAction by remember {
+-        mutableStateOf(false)
+-    }
++    var isSlideAction by remember { mutableStateOf(false) }
+ 
+     NavHost(
+         navController = navController,
+@@ -38,14 +36,16 @@
+         popEnterTransition = { EnterTransition.None },
+         popExitTransition = { ExitTransition.None }
+     ) {
+-
+         composable(
+             route = "home",
+             enterTransition = {
+                 if (isSlideAction) {
+                     slideInHorizontally(
+                         initialOffsetX = { -it },
+-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
++                        animationSpec = tween(
++                            300,
++                            easing = FastOutSlowInEasing
++                        )
+                     )
+                 } else {
+                     EnterTransition.None
+@@ -55,40 +55,37 @@
+                 if (isSlideAction) {
+                     slideOutHorizontally(
+                         targetOffsetX = { -it },
+-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
++                        animationSpec = tween(
++                            300,
++                            easing = FastOutSlowInEasing
++                        )
+                     )
+                 } else {
+                     ExitTransition.None
+                 }
+             }
+         ) {
+-
+             HomeScreen(
+                 onScheduleClick = {
+                     isSlideAction = true
+                     navController.navigate("schedule")
+                 },
+-
+                 onReportClick = {
+                     isSlideAction = true
+                     navController.navigate("report")
+                 },
+-
+                 onGuideClick = {
+                     isSlideAction = true
+                     navController.navigate("guide")
+                 },
+-
+                 onProfileClick = {
+                     isSlideAction = true
+                     navController.navigate("profile")
+                 },
+-
+                 onNotificationClick = {
+                     isSlideAction = true
+                     navController.navigate("notifications")
+                 },
+-
+                 onViewAllReportsClick = {
+                     isSlideAction = true
+                     navController.navigate("report")
+@@ -102,7 +99,10 @@
+                 if (isSlideAction) {
+                     slideInHorizontally(
+                         initialOffsetX = { it },
+-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
++                        animationSpec = tween(
++                            300,
++                            easing = FastOutSlowInEasing
++                        )
+                     )
+                 } else {
+                     EnterTransition.None
+@@ -112,14 +112,16 @@
+                 if (isSlideAction) {
+                     slideOutHorizontally(
+                         targetOffsetX = { -it },
+-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
++                        animationSpec = tween(
++                            300,
++                            easing = FastOutSlowInEasing
++                        )
+                     )
+                 } else {
+                     ExitTransition.None
+                 }
+             }
+         ) {
+-
+             ScheduleScreen()
+         }
+ 
+@@ -129,7 +131,10 @@
+                 if (isSlideAction) {
+                     slideInHorizontally(
+                         initialOffsetX = { it },
+-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
++                        animationSpec = tween(
++                            300,
++                            easing = FastOutSlowInEasing
++                        )
+                     )
+                 } else {
+                     EnterTransition.None
+@@ -139,15 +144,17 @@
+                 if (isSlideAction) {
+                     slideOutHorizontally(
+                         targetOffsetX = { -it },
+-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
++                        animationSpec = tween(
++                            300,
++                            easing = FastOutSlowInEasing
++                        )
+                     )
+                 } else {
+                     ExitTransition.None
+                 }
+             }
+         ) {
+-
+-            ReportScreen()
++            ReportScreen(accessToken = accessToken)
+         }
+ 
+         composable(
+@@ -156,7 +163,10 @@
+                 if (isSlideAction) {
+                     slideInHorizontally(
+                         initialOffsetX = { it },
+-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
++                        animationSpec = tween(
++                            300,
++                            easing = FastOutSlowInEasing
++                        )
+                     )
+                 } else {
+                     EnterTransition.None
+@@ -166,14 +176,16 @@
+                 if (isSlideAction) {
+                     slideOutHorizontally(
+                         targetOffsetX = { -it },
+-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
++                        animationSpec = tween(
++                            300,
++                            easing = FastOutSlowInEasing
++                        )
+                     )
+                 } else {
+                     ExitTransition.None
+                 }
+             }
+         ) {
+-
+             GuideScreen()
+         }
+ 
+@@ -183,7 +195,10 @@
+                 if (isSlideAction) {
+                     slideInHorizontally(
+                         initialOffsetX = { it },
+-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
++                        animationSpec = tween(
++                            300,
++                            easing = FastOutSlowInEasing
++                        )
+                     )
+                 } else {
+                     EnterTransition.None
+@@ -193,14 +208,16 @@
+                 if (isSlideAction) {
+                     slideOutHorizontally(
+                         targetOffsetX = { -it },
+-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
++                        animationSpec = tween(
++                            300,
++                            easing = FastOutSlowInEasing
++                        )
+                     )
+                 } else {
+                     ExitTransition.None
+                 }
+             }
+         ) {
+-
+             ProfileScreen(
+                 onNotificationsClick = {
+                     isSlideAction = true
+@@ -214,35 +231,51 @@
+             enterTransition = {
+                 slideInHorizontally(
+                     initialOffsetX = { it },
+-                    animationSpec = tween(300, easing = FastOutSlowInEasing)
++                    animationSpec = tween(
++                        300,
++                        easing = FastOutSlowInEasing
++                    )
+                 )
+             },
+             exitTransition = {
+                 slideOutHorizontally(
+                     targetOffsetX = { it },
+-                    animationSpec = tween(300, easing = FastOutSlowInEasing)
++                    animationSpec = tween(
++                        300,
++                        easing = FastOutSlowInEasing
++                    )
+                 )
+             },
+             popEnterTransition = {
+                 slideInHorizontally(
+                     initialOffsetX = { -it },
+-                    animationSpec = tween(300, easing = FastOutSlowInEasing)
++                    animationSpec = tween(
++                        300,
++                        easing = FastOutSlowInEasing
++                    )
+                 )
+             },
+             popExitTransition = {
+                 slideOutHorizontally(
+                     targetOffsetX = { it },
+-                    animationSpec = tween(300, easing = FastOutSlowInEasing)
++                    animationSpec = tween(
++                        300,
++                        easing = FastOutSlowInEasing
++                    )
+                 )
+             }
+         ) {
+-
+             NotificationScreen(
+                 onBackToHome = {
+                     isSlideAction = false
+-                    navController.navigate("home")
++                    navController.navigate("home") {
++                        popUpTo("home") {
++                            inclusive = false
++                        }
++                        launchSingleTop = true
++                    }
+                 }
+             )
+         }
+     }
+-}
+\ No newline at end of file
++}
+Index: app/src/main/AndroidManifest.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n\r\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\r\n\r\n    <application\r\n        android:allowBackup=\"true\"\r\n        android:label=\"EcoTrack\"\r\n        android:supportsRtl=\"true\">\r\n\r\n        <activity\r\n            android:name=\".MainActivity\"\r\n            android:exported=\"true\">\r\n\r\n            <intent-filter>\r\n\r\n                <action android:name=\"android.intent.action.MAIN\" />\r\n\r\n                <category android:name=\"android.intent.category.LAUNCHER\" />\r\n\r\n            </intent-filter>\r\n\r\n        </activity>\r\n\r\n    </application>\r\n\r\n</manifest>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+--- a/app/src/main/AndroidManifest.xml	(revision 20f779bbee69f862d79e8038afeea4ccc1174da4)
++++ b/app/src/main/AndroidManifest.xml	(date 1792316847109)
+@@ -1,26 +1,22 @@
+ <?xml version="1.0" encoding="utf-8"?>
+-
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ 
++    <uses-permission android:name="android.permission.INTERNET" />
++
+     <application
+         android:allowBackup="true"
+         android:label="EcoTrack"
+-        android:supportsRtl="true">
++        android:supportsRtl="true"
++        android:usesCleartextTraffic="true">
+ 
+         <activity
+             android:name=".MainActivity"
+             android:exported="true">
+-
+             <intent-filter>
+-
+                 <action android:name="android.intent.action.MAIN" />
+-
+                 <category android:name="android.intent.category.LAUNCHER" />
+-
+             </intent-filter>
+-
+         </activity>
+ 
+     </application>
+-
+ </manifest>
+\ No newline at end of file
+Index: app/src/main/java/edp/app/ecotrack/MainActivity.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package edp.app.ecotrack\r\n\r\nimport android.os.Bundle\r\nimport androidx.activity.ComponentActivity\r\nimport androidx.activity.compose.setContent\r\nimport androidx.compose.foundation.layout.fillMaxSize\r\nimport androidx.compose.foundation.layout.padding\r\nimport androidx.compose.material3.Scaffold\r\nimport androidx.compose.material3.Surface\r\nimport androidx.compose.runtime.Composable\r\nimport androidx.compose.ui.Modifier\r\nimport androidx.navigation.compose.currentBackStackEntryAsState\r\nimport androidx.navigation.compose.rememberNavController\r\nimport edp.app.ecotrack.components.BottomNavigationBar\r\nimport edp.app.ecotrack.navigation.EcoTrackNavigation\r\nimport edp.app.ecotrack.ui.theme.EcoTrackTheme\r\n\r\nclass MainActivity : ComponentActivity() {\r\n\r\n    override fun onCreate(savedInstanceState: Bundle?) {\r\n        super.onCreate(savedInstanceState)\r\n\r\n        setContent {\r\n            EcoTrackTheme {\r\n                EcoTrackApp()\r\n            }\r\n        }\r\n    }\r\n}\r\n\r\n@Composable\r\nfun EcoTrackApp() {\r\n\r\n    val navController = rememberNavController()\r\n\r\n    val navBackStackEntry =\r\n        navController.currentBackStackEntryAsState()\r\n\r\n    val currentRoute =\r\n        navBackStackEntry.value?.destination?.route\r\n\r\n    val selectedItem = when (currentRoute) {\r\n        \"home\" -> \"Home\"\r\n        \"schedule\" -> \"Schedule\"\r\n        \"report\" -> \"Report\"\r\n        \"guide\" -> \"Guide\"\r\n        \"profile\" -> \"Profile\"\r\n        else -> \"Home\"\r\n    }\r\n\r\n    Scaffold(\r\n        bottomBar = {\r\n\r\n            if (\r\n                currentRoute == \"home\" ||\r\n                currentRoute == \"schedule\" ||\r\n                currentRoute == \"report\" ||\r\n                currentRoute == \"guide\" ||\r\n                currentRoute == \"profile\"\r\n            ) {\r\n\r\n                BottomNavigationBar(\r\n                    selectedItem = selectedItem,\r\n                    onItemSelected = { item ->\r\n\r\n                        val route = when (item) {\r\n                            \"Home\" -> \"home\"\r\n                            \"Schedule\" -> \"schedule\"\r\n                            \"Report\" -> \"report\"\r\n                            \"Guide\" -> \"guide\"\r\n                            \"Profile\" -> \"profile\"\r\n                            else -> \"home\"\r\n                        }\r\n\r\n                        if (currentRoute != route) {\r\n\r\n                            navController.navigate(route) {\r\n\r\n                                popUpTo(\"home\") {\r\n                                    saveState = false\r\n                                }\r\n\r\n                                launchSingleTop = true\r\n                                restoreState = false\r\n                            }\r\n                        }\r\n                    }\r\n                )\r\n            }\r\n        }\r\n    ) { innerPadding ->\r\n\r\n        Surface(\r\n            modifier = Modifier\r\n                .fillMaxSize()\r\n                .padding(innerPadding)\r\n        ) {\r\n\r\n            EcoTrackNavigation(\r\n                navController = navController\r\n            )\r\n        }\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/edp/app/ecotrack/MainActivity.kt b/app/src/main/java/edp/app/ecotrack/MainActivity.kt
+--- a/app/src/main/java/edp/app/ecotrack/MainActivity.kt	(revision 20f779bbee69f862d79e8038afeea4ccc1174da4)
++++ b/app/src/main/java/edp/app/ecotrack/MainActivity.kt	(date 1792244782019)
+@@ -1,3 +1,4 @@
++
+ package edp.app.ecotrack
+ 
+ import android.os.Bundle
+@@ -50,7 +51,6 @@
+ 
+     Scaffold(
+         bottomBar = {
+-
+             if (
+                 currentRoute == "home" ||
+                 currentRoute == "schedule" ||
+@@ -58,7 +58,6 @@
+                 currentRoute == "guide" ||
+                 currentRoute == "profile"
+             ) {
+-
+                 BottomNavigationBar(
+                     selectedItem = selectedItem,
+                     onItemSelected = { item ->
+@@ -73,13 +72,10 @@
+                         }
+ 
+                         if (currentRoute != route) {
+-
+                             navController.navigate(route) {
+-
+                                 popUpTo("home") {
+                                     saveState = false
+                                 }
+-
+                                 launchSingleTop = true
+                                 restoreState = false
+                             }
+@@ -95,10 +91,10 @@
+                 .fillMaxSize()
+                 .padding(innerPadding)
+         ) {
+-
+             EcoTrackNavigation(
+-                navController = navController
++                navController = navController,
++                accessToken = ""
+             )
+         }
+     }
+-}
+\ No newline at end of file
++}
+Index: app/src/main/java/edp/app/ecotrack/ResidentHomescreenModels.kt
+===================================================================
+diff --git a/app/src/main/java/edp/app/ecotrack/ResidentHomescreenModels.kt b/app/src/main/java/edp/app/ecotrack/ResidentHomescreenModels.kt
+new file mode 100644
+--- /dev/null	(date 1792321013292)
++++ b/app/src/main/java/edp/app/ecotrack/ResidentHomescreenModels.kt	(date 1792321013292)
+@@ -0,0 +1,26 @@
++package edp.app.ecotrack
++
++import com.google.gson.annotations.SerializedName
++
++data class ResidentHomescreenResponse(
++    val message: String? = null,
++    val user: ResidentUser? = null,
++    val dashboard: ResidentDashboard? = null
++)
++
++data class ResidentUser(
++    @SerializedName("full_name")
++    val fullName: String? = null,
++    @SerializedName("barangay_name")
++    val barangay: String? = null,
++    val role: String? = null
++) {
++    val full_name: String? get() = fullName
++    val barangay_name: String? get() = barangay
++}
++
++data class ResidentDashboard(
++    val totalReports: Int = 0,
++    val pendingReports: Int = 0,
++    val upcomingCollections: Int = 0
++)
+\ No newline at end of file
+Index: app/src/main/java/edp/app/ecotrack/data/SupabaseAuthService.kt
+===================================================================
+diff --git a/app/src/main/java/edp/app/ecotrack/data/SupabaseAuthService.kt b/app/src/main/java/edp/app/ecotrack/data/SupabaseAuthService.kt
+new file mode 100644
+--- /dev/null	(date 1792321599871)
++++ b/app/src/main/java/edp/app/ecotrack/data/SupabaseAuthService.kt	(date 1792321599871)
+@@ -0,0 +1,143 @@
++
++package edp.app.ecotrack.data
++
++import edp.app.ecotrack.BuildConfig
++import okhttp3.MediaType.Companion.toMediaType
++import okhttp3.OkHttpClient
++import okhttp3.Request
++import okhttp3.RequestBody.Companion.toRequestBody
++import org.json.JSONObject
++import java.io.IOException
++
++object SupabaseAuthService {
++
++    private val client = OkHttpClient()
++
++    private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
++
++    private val supabaseUrl = BuildConfig.SUPABASE_URL.trimEnd('/')
++
++    private val supabaseKey = BuildConfig.SUPABASE_PUBLISHABLE_KEY
++
++    data class AuthResult(
++        val success: Boolean,
++        val message: String,
++        val accessToken: String? = null,
++        val userId: String? = null,
++        val email: String? = null,
++    )
++
++    fun signIn(
++        email: String,
++        password: String,
++        callback: (AuthResult) -> Unit
++    ) {
++        authenticate(
++            endpoint = "token?grant_type=password",
++            email = email,
++            password = password,
++            callback = callback
++        )
++    }
++
++    fun signUp(
++        email: String,
++        password: String,
++        callback: (AuthResult) -> Unit
++    ) {
++        authenticate(
++            endpoint = "signup",
++            email = email,
++            password = password,
++            callback = callback
++        )
++    }
++
++    private fun authenticate(
++        endpoint: String,
++        email: String,
++        password: String,
++        callback: (AuthResult) -> Unit
++    ) {
++        if (supabaseUrl.isBlank() || supabaseKey.isBlank()) {
++            callback(
++                AuthResult(
++                    success = false,
++                    message = "Supabase configuration is missing. Check local.properties."
++                )
++            )
++            return
++        }
++
++        val requestJson = JSONObject().apply {
++            put("email", email.trim().lowercase())
++            put("password", password)
++        }
++
++        val request = Request.Builder()
++            .url("$supabaseUrl/auth/v1/$endpoint")
++            .header("apikey", supabaseKey)
++            .header("Content-Type", "application/json")
++            .post(requestJson.toString().toRequestBody(jsonMediaType))
++            .build()
++
++        Thread {
++            val result = try {
++                client.newCall(request).execute().use { response ->
++                    val responseBody = response.body?.string().orEmpty()
++                    val json = if (responseBody.isNotBlank()) {
++                        JSONObject(responseBody)
++                    } else {
++                        JSONObject()
++                    }
++
++                    if (response.isSuccessful) {
++                        val user = json.optJSONObject("user")
++                        val accessToken = json.optString("access_token")
++                            .takeIf { it.isNotBlank() }
++
++                        AuthResult(
++                            success = true,
++                            message = if (accessToken == null) {
++                                "Registration submitted. Check your email if verification is required."
++                            } else {
++                                "Authentication successful."
++                            },
++                            accessToken = accessToken,
++                            userId = user?.optString("id")?.takeIf { it.isNotBlank() },
++                            email = user?.optString("email")?.takeIf { it.isNotBlank() }
++                        )
++                    } else {
++                        AuthResult(
++                            success = false,
++                            message = json.optString(
++                                "msg",
++                                json.optString(
++                                    "message",
++                                    json.optString(
++                                        "error_description",
++                                        "Authentication failed. Please check your details."
++                                    )
++                                )
++                            )
++                        )
++                    }
++                }
++            } catch (_: IOException) {
++                AuthResult(
++                    success = false,
++                    message = "Unable to connect. Check your internet connection and try again."
++                )
++            } catch (_: Exception) {
++                AuthResult(
++                    success = false,
++                    message = "An unexpected authentication error occurred."
++                )
++            }
++
++            android.os.Handler(android.os.Looper.getMainLooper()).post {
++                callback(result)
++            }
++        }.start()
++    }
++}
+Index: app/src/main/java/edp/app/ecotrack/RetrofitClient.kt
+===================================================================
+diff --git a/app/src/main/java/edp/app/ecotrack/RetrofitClient.kt b/app/src/main/java/edp/app/ecotrack/RetrofitClient.kt
+new file mode 100644
+--- /dev/null	(date 1792242935340)
++++ b/app/src/main/java/edp/app/ecotrack/RetrofitClient.kt	(date 1792242935340)
+@@ -0,0 +1,15 @@
++package edp.app.ecotrack
++
++import retrofit2.Retrofit
++import retrofit2.converter.gson.GsonConverterFactory
++
++object RetrofitClient {
++
++    val residentApi: ResidentApiService by lazy {
++        Retrofit.Builder()
++            .baseUrl(ApiConfig.BASE_URL)
++            .addConverterFactory(GsonConverterFactory.create())
++            .build()
++            .create(ResidentApiService::class.java)
++    }
++}
+\ No newline at end of file
+Index: app/src/main/java/edp/app/ecotrack/ReportModels.kt
+===================================================================
+diff --git a/app/src/main/java/edp/app/ecotrack/ReportModels.kt b/app/src/main/java/edp/app/ecotrack/ReportModels.kt
+new file mode 100644
+--- /dev/null	(date 1792243673233)
++++ b/app/src/main/java/edp/app/ecotrack/ReportModels.kt	(date 1792243673233)
+@@ -0,0 +1,32 @@
++package edp.app.ecotrack
++
++data class CreateReportRequest(
++    val report_type: String,
++    val description: String,
++    val location_details: String? = null,
++    val latitude: Double? = null,
++    val longitude: Double? = null,
++    val photo_path: String? = null
++)
++
++data class ReportItem(
++    val report_id: Int,
++    val report_type: String,
++    val description: String,
++    val location_details: String? = null,
++    val latitude: Double? = null,
++    val longitude: Double? = null,
++    val photo_path: String? = null,
++    val status: String = "Pending",
++    val created_at: String? = null
++)
++
++data class ReportResponse(
++    val message: String? = null,
++    val report: ReportItem? = null
++)
++
++data class MyReportsResponse(
++    val message: String? = null,
++    val reports: List<ReportItem> = emptyList()
++)
+\ No newline at end of file
+Index: app/src/main/java/edp/app/ecotrack/ResidentApiService.kt
+===================================================================
+diff --git a/app/src/main/java/edp/app/ecotrack/ResidentApiService.kt b/app/src/main/java/edp/app/ecotrack/ResidentApiService.kt
+new file mode 100644
+--- /dev/null	(date 1792242895936)
++++ b/app/src/main/java/edp/app/ecotrack/ResidentApiService.kt	(date 1792242895936)
+@@ -0,0 +1,25 @@
++package edp.app.ecotrack
++
++import retrofit2.http.Body
++import retrofit2.http.GET
++import retrofit2.http.Header
++import retrofit2.http.POST
++
++interface ResidentApiService {
++
++    @GET("api/residents/dashboard")
++    suspend fun getDashboard(
++        @Header("Authorization") authorization: String
++    ): ResidentHomescreenResponse
++
++    @POST("api/residents/reports")
++    suspend fun submitReport(
++        @Header("Authorization") authorization: String,
++        @Body request: CreateReportRequest
++    ): ReportResponse
++
++    @GET("api/residents/reports")
++    suspend fun getMyReports(
++        @Header("Authorization") authorization: String
++    ): MyReportsResponse
++}
+\ No newline at end of file
+Index: app/src/main/java/edp/app/ecotrack/Apiconfig.kt
+===================================================================
+diff --git a/app/src/main/java/edp/app/ecotrack/Apiconfig.kt b/app/src/main/java/edp/app/ecotrack/Apiconfig.kt
+new file mode 100644
+--- /dev/null	(date 1792230477384)
++++ b/app/src/main/java/edp/app/ecotrack/Apiconfig.kt	(date 1792230477384)
+@@ -0,0 +1,5 @@
++package edp.app.ecotrack
++
++object ApiConfig {
++    const val BASE_URL = "http://10.0.2.2:3000/"
++}
+\ No newline at end of file
+Index: app/src/main/java/edp/app/ecotrack/screens/ReportScreen.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package edp.app.ecotrack.screens\r\n\r\nimport androidx.compose.foundation.background\r\nimport androidx.compose.foundation.layout.Column\r\nimport androidx.compose.foundation.layout.Spacer\r\nimport androidx.compose.foundation.layout.fillMaxSize\r\nimport androidx.compose.foundation.layout.fillMaxWidth\r\nimport androidx.compose.foundation.layout.height\r\nimport androidx.compose.foundation.layout.padding\r\nimport androidx.compose.foundation.rememberScrollState\r\nimport androidx.compose.foundation.shape.RoundedCornerShape\r\nimport androidx.compose.foundation.verticalScroll\r\nimport androidx.compose.material3.Button\r\nimport androidx.compose.material3.ButtonDefaults\r\nimport androidx.compose.material3.MaterialTheme\r\nimport androidx.compose.material3.Text\r\nimport androidx.compose.runtime.Composable\r\nimport androidx.compose.runtime.getValue\r\nimport androidx.compose.runtime.mutableStateOf\r\nimport androidx.compose.runtime.remember\r\nimport androidx.compose.runtime.setValue\r\nimport androidx.compose.ui.Modifier\r\nimport androidx.compose.ui.graphics.Color\r\nimport androidx.compose.ui.unit.dp\r\nimport edp.app.ecotrack.components.ReportCard\r\nimport edp.app.ecotrack.ui.theme.EcoDarkGreen\r\nimport edp.app.ecotrack.ui.theme.EcoGreen\r\n\r\n@Composable\r\nfun ReportScreen() {\r\n\r\n    var showNewReport by remember {\r\n        mutableStateOf(false)\r\n    }\r\n\r\n    if (showNewReport) {\r\n\r\n        NewReportScreen(\r\n            onBack = {\r\n                showNewReport = false\r\n            }\r\n        )\r\n\r\n    } else {\r\n\r\n        MyReportsScreen(\r\n            onNewReport = {\r\n                showNewReport = true\r\n            }\r\n        )\r\n    }\r\n}\r\n\r\n@Composable\r\nprivate fun MyReportsScreen(\r\n    onNewReport: () -> Unit\r\n) {\r\n\r\n    Column(\r\n        modifier = Modifier\r\n            .fillMaxSize()\r\n            .background(MaterialTheme.colorScheme.background)\r\n            .verticalScroll(rememberScrollState())\r\n    ) {\r\n\r\n        Column(\r\n            modifier = Modifier\r\n                .fillMaxWidth()\r\n                .background(EcoDarkGreen)\r\n                .padding(\r\n                    start = 24.dp,\r\n                    end = 24.dp,\r\n                    top = 32.dp,\r\n                    bottom = 24.dp\r\n                )\r\n        ) {\r\n\r\n            Text(\r\n                text = \"My Reports\",\r\n                color = Color.White,\r\n                style = MaterialTheme.typography.headlineMedium\r\n            )\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(5.dp)\r\n            )\r\n\r\n            Text(\r\n                text = \"Track and submit barangay waste reports\",\r\n                color = Color.White.copy(alpha = 0.8f),\r\n                style = MaterialTheme.typography.bodySmall\r\n            )\r\n        }\r\n\r\n        Spacer(\r\n            modifier = Modifier.height(20.dp)\r\n        )\r\n\r\n        Column(\r\n            modifier = Modifier\r\n                .fillMaxWidth()\r\n                .padding(horizontal = 24.dp)\r\n        ) {\r\n\r\n            Button(\r\n                onClick = onNewReport,\r\n                modifier = Modifier\r\n                    .fillMaxWidth()\r\n                    .height(50.dp),\r\n                shape = RoundedCornerShape(12.dp),\r\n                colors = ButtonDefaults.buttonColors(\r\n                    containerColor = EcoGreen\r\n                )\r\n            ) {\r\n                Text(\r\n                    text = \"+ Submit New Report\",\r\n                    color = Color.White,\r\n                    style = MaterialTheme.typography.titleMedium\r\n                )\r\n            }\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(24.dp)\r\n            )\r\n\r\n            Text(\r\n                text = \"SUBMITTED REPORTS\",\r\n                color = EcoDarkGreen,\r\n                style = MaterialTheme.typography.labelMedium\r\n            )\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(12.dp)\r\n            )\r\n\r\n            ReportCard(\r\n                title = \"Illegal Dumping\",\r\n                location = \"Zone 3, Bulua\",\r\n                date = \"Sep 12, 2026\",\r\n                reportId = \"#RPT-001\",\r\n                status = \"Pending\",\r\n                isResolved = false\r\n            )\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(12.dp)\r\n            )\r\n\r\n            ReportCard(\r\n                title = \"Overflowing Bin\",\r\n                location = \"Zone 2, Bulua\",\r\n                date = \"Sep 10, 2026\",\r\n                reportId = \"#RPT-002\",\r\n                status = \"Resolved\",\r\n                isResolved = true\r\n            )\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(12.dp)\r\n            )\r\n\r\n            ReportCard(\r\n                title = \"Uncollected Waste\",\r\n                location = \"Zone 10, Bulua\",\r\n                date = \"Sep 05, 2026\",\r\n                reportId = \"#RPT-003\",\r\n                status = \"Resolved\",\r\n                isResolved = true\r\n            )\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(28.dp)\r\n            )\r\n        }\r\n    }\r\n}\r\n
+===================================================================
+diff --git a/app/src/main/java/edp/app/ecotrack/screens/ReportScreen.kt b/app/src/main/java/edp/app/ecotrack/screens/ReportScreen.kt
+--- a/app/src/main/java/edp/app/ecotrack/screens/ReportScreen.kt	(revision 20f779bbee69f862d79e8038afeea4ccc1174da4)
++++ b/app/src/main/java/edp/app/ecotrack/screens/ReportScreen.kt	(date 1792244575802)
+@@ -1,90 +1,120 @@
+ package edp.app.ecotrack.screens
+ 
+ import androidx.compose.foundation.background
++import androidx.compose.foundation.layout.Arrangement
+ import androidx.compose.foundation.layout.Column
+ import androidx.compose.foundation.layout.Spacer
+ import androidx.compose.foundation.layout.fillMaxSize
+ import androidx.compose.foundation.layout.fillMaxWidth
+ import androidx.compose.foundation.layout.height
+ import androidx.compose.foundation.layout.padding
++import androidx.compose.foundation.lazy.LazyColumn
++import androidx.compose.foundation.lazy.items
+ import androidx.compose.foundation.rememberScrollState
+ import androidx.compose.foundation.shape.RoundedCornerShape
+ import androidx.compose.foundation.verticalScroll
+ import androidx.compose.material3.Button
+ import androidx.compose.material3.ButtonDefaults
++import androidx.compose.material3.CircularProgressIndicator
+ import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.OutlinedButton
++import androidx.compose.material3.OutlinedTextField
+ import androidx.compose.material3.Text
+-import androidx.compose.runtime.Composable
+-import androidx.compose.runtime.getValue
+-import androidx.compose.runtime.mutableStateOf
+-import androidx.compose.runtime.remember
+-import androidx.compose.runtime.setValue
++import androidx.compose.material3.DropdownMenuItem
++import androidx.compose.material3.ExposedDropdownMenuBox
++import androidx.compose.material3.ExposedDropdownMenuDefaults
++import androidx.compose.runtime.*
++import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
+ import androidx.compose.ui.graphics.Color
+ import androidx.compose.ui.unit.dp
+-import edp.app.ecotrack.components.ReportCard
++import edp.app.ecotrack.CreateReportRequest
++import edp.app.ecotrack.ReportItem
++import edp.app.ecotrack.RetrofitClient
+ import edp.app.ecotrack.ui.theme.EcoDarkGreen
+ import edp.app.ecotrack.ui.theme.EcoGreen
++import kotlinx.coroutines.launch
+ 
++@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+ @Composable
+-fun ReportScreen() {
+-
+-    var showNewReport by remember {
+-        mutableStateOf(false)
+-    }
+-
+-    if (showNewReport) {
++fun ReportScreen(
++    accessToken: String
++) {
++    var showForm by remember { mutableStateOf(false) }
++    var refreshKey by remember { mutableIntStateOf(0) }
+ 
+-        NewReportScreen(
+-            onBack = {
+-                showNewReport = false
++    if (showForm) {
++        NewReportForm(
++            accessToken = accessToken,
++            onBack = { showForm = false },
++            onSubmitted = {
++                showForm = false
++                refreshKey++
+             }
+         )
+-
+     } else {
+-
+-        MyReportsScreen(
+-            onNewReport = {
+-                showNewReport = true
+-            }
++        MyReportsContent(
++            accessToken = accessToken,
++            refreshKey = refreshKey,
++            onNewReport = { showForm = true }
+         )
+     }
+ }
+ 
+ @Composable
+-private fun MyReportsScreen(
++private fun MyReportsContent(
++    accessToken: String,
++    refreshKey: Int,
+     onNewReport: () -> Unit
+ ) {
++    val scope = rememberCoroutineScope()
++    var reports by remember { mutableStateOf<List<ReportItem>>(emptyList()) }
++    var loading by remember { mutableStateOf(true) }
++    var error by remember { mutableStateOf<String?>(null) }
++
++    suspend fun loadReports() {
++        if (accessToken.isBlank()) {
++            error = "Please log in again to view your reports."
++            loading = false
++            return
++        }
++
++        loading = true
++        error = null
++
++        try {
++            val response = RetrofitClient.residentApi.getMyReports(
++                authorization = "Bearer $accessToken"
++            )
++            reports = response.reports
++        } catch (e: Exception) {
++            error = "Unable to load reports. Check your connection and try again."
++        } finally {
++            loading = false
++        }
++    }
++
++    LaunchedEffect(accessToken, refreshKey) {
++        loadReports()
++    }
+ 
+     Column(
+         modifier = Modifier
+             .fillMaxSize()
+             .background(MaterialTheme.colorScheme.background)
+-            .verticalScroll(rememberScrollState())
+     ) {
+-
+         Column(
+             modifier = Modifier
+                 .fillMaxWidth()
+                 .background(EcoDarkGreen)
+-                .padding(
+-                    start = 24.dp,
+-                    end = 24.dp,
+-                    top = 32.dp,
+-                    bottom = 24.dp
+-                )
++                .padding(start = 24.dp, end = 24.dp, top = 32.dp, bottom = 24.dp)
+         ) {
+-
+             Text(
+                 text = "My Reports",
+                 color = Color.White,
+                 style = MaterialTheme.typography.headlineMedium
+             )
+-
+-            Spacer(
+-                modifier = Modifier.height(5.dp)
+-            )
+-
++            Spacer(Modifier.height(5.dp))
+             Text(
+                 text = "Track and submit barangay waste reports",
+                 color = Color.White.copy(alpha = 0.8f),
+@@ -92,16 +122,11 @@
+             )
+         }
+ 
+-        Spacer(
+-            modifier = Modifier.height(20.dp)
+-        )
+-
+         Column(
+             modifier = Modifier
+-                .fillMaxWidth()
+-                .padding(horizontal = 24.dp)
++                .fillMaxSize()
++                .padding(horizontal = 24.dp, vertical = 20.dp)
+         ) {
+-
+             Button(
+                 onClick = onNewReport,
+                 modifier = Modifier
+@@ -119,57 +144,258 @@
+                 )
+             }
+ 
+-            Spacer(
+-                modifier = Modifier.height(24.dp)
+-            )
++            Spacer(Modifier.height(24.dp))
+ 
+             Text(
+                 text = "SUBMITTED REPORTS",
+                 color = EcoDarkGreen,
+                 style = MaterialTheme.typography.labelMedium
+             )
++            Spacer(Modifier.height(12.dp))
++
++            when {
++                loading -> {
++                    Column(
++                        modifier = Modifier.fillMaxWidth().padding(24.dp),
++                        horizontalAlignment = Alignment.CenterHorizontally
++                    ) {
++                        CircularProgressIndicator(color = EcoGreen)
++                        Spacer(Modifier.height(8.dp))
++                        Text("Loading reports...")
++                    }
++                }
++
++                error != null -> {
++                    Text(
++                        text = error!!,
++                        color = MaterialTheme.colorScheme.error
++                    )
++                    Spacer(Modifier.height(12.dp))
++                    Button(
++                        onClick = { scope.launch { loadReports() } },
++                        colors = ButtonDefaults.buttonColors(
++                            containerColor = EcoGreen
++                        )
++                    ) {
++                        Text("Try Again")
++                    }
++                }
++
++                reports.isEmpty() -> {
++                    Text("No reports submitted yet. Submit a report to get started.")
++                }
++
++                else -> {
++                    LazyColumn(
++                        modifier = Modifier.fillMaxSize(),
++                        verticalArrangement = Arrangement.spacedBy(12.dp)
++                    ) {
++                        items(reports, key = { it.report_id }) { report ->
++                            ReportItemCard(report)
++                        }
++                    }
++                }
++            }
++        }
++    }
++}
++
++@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
++@Composable
++private fun NewReportForm(
++    accessToken: String,
++    onBack: () -> Unit,
++    onSubmitted: () -> Unit
++) {
++    val scope = rememberCoroutineScope()
++    val types = listOf(
++        "Uncollected Garbage",
++        "Overflowing Garbage",
++        "Illegal Dumping",
++        "Other"
++    )
++
++    var selectedType by remember { mutableStateOf(types[0]) }
++    var expanded by remember { mutableStateOf(false) }
++    var description by remember { mutableStateOf("") }
++    var location by remember { mutableStateOf("") }
++    var loading by remember { mutableStateOf(false) }
++    var message by remember { mutableStateOf<String?>(null) }
++    var failed by remember { mutableStateOf(false) }
+ 
+-            Spacer(
+-                modifier = Modifier.height(12.dp)
+-            )
++    Column(
++        modifier = Modifier
++            .fillMaxSize()
++            .background(MaterialTheme.colorScheme.background)
++            .verticalScroll(rememberScrollState())
++            .padding(24.dp),
++        verticalArrangement = Arrangement.spacedBy(14.dp)
++    ) {
++        Text(
++            text = "New Waste Report",
++            color = EcoDarkGreen,
++            style = MaterialTheme.typography.headlineMedium
++        )
+ 
+-            ReportCard(
+-                title = "Illegal Dumping",
+-                location = "Zone 3, Bulua",
+-                date = "Sep 12, 2026",
+-                reportId = "#RPT-001",
+-                status = "Pending",
+-                isResolved = false
++        Text("Report Type")
++
++        ExposedDropdownMenuBox(
++            expanded = expanded,
++            onExpandedChange = { expanded = !expanded }
++        ) {
++            OutlinedTextField(
++                value = selectedType,
++                onValueChange = {},
++                readOnly = true,
++                label = { Text("Select issue") },
++                trailingIcon = {
++                    ExposedDropdownMenuDefaults.TrailingIcon(expanded)
++                },
++                modifier = Modifier.menuAnchor().fillMaxWidth()
+             )
+ 
+-            Spacer(
+-                modifier = Modifier.height(12.dp)
+-            )
++            ExposedDropdownMenu(
++                expanded = expanded,
++                onDismissRequest = { expanded = false }
++            ) {
++                types.forEach { type ->
++                    DropdownMenuItem(
++                        text = { Text(type) },
++                        onClick = {
++                            selectedType = type
++                            expanded = false
++                        }
++                    )
++                }
++            }
++        }
+ 
+-            ReportCard(
+-                title = "Overflowing Bin",
+-                location = "Zone 2, Bulua",
+-                date = "Sep 10, 2026",
+-                reportId = "#RPT-002",
+-                status = "Resolved",
+-                isResolved = true
+-            )
++        OutlinedTextField(
++            value = description,
++            onValueChange = { description = it },
++            label = { Text("Description") },
++            placeholder = { Text("Describe the waste issue") },
++            minLines = 3,
++            modifier = Modifier.fillMaxWidth()
++        )
+ 
+-            Spacer(
+-                modifier = Modifier.height(12.dp)
+-            )
++        OutlinedTextField(
++            value = location,
++            onValueChange = { location = it },
++            label = { Text("Location details") },
++            placeholder = { Text("Street, zone, or nearby landmark") },
++            modifier = Modifier.fillMaxWidth()
++        )
+ 
+-            ReportCard(
+-                title = "Uncollected Waste",
+-                location = "Zone 10, Bulua",
+-                date = "Sep 05, 2026",
+-                reportId = "#RPT-003",
+-                status = "Resolved",
+-                isResolved = true
++        message?.let {
++            Text(
++                text = it,
++                color = if (failed) MaterialTheme.colorScheme.error
++                else EcoDarkGreen
+             )
++        }
+ 
+-            Spacer(
+-                modifier = Modifier.height(28.dp)
++        Button(
++            onClick = {
++                if (description.isBlank()) {
++                    message = "Please enter a description."
++                    failed = true
++                    return@Button
++                }
++
++                if (accessToken.isBlank()) {
++                    message = "Your session is missing. Please log in again."
++                    failed = true
++                    return@Button
++                }
++
++                scope.launch {
++                    loading = true
++                    message = null
++
++                    try {
++                        val response = RetrofitClient.residentApi.submitReport(
++                            authorization = "Bearer $accessToken",
++                            request = CreateReportRequest(
++                                report_type = selectedType,
++                                description = description.trim(),
++                                location_details = location.trim()
++                                    .takeIf { it.isNotEmpty() }
++                            )
++                        )
++
++                        if (response.report != null) {
++                            onSubmitted()
++                        } else {
++                            message = response.message
++                                ?: "The server did not confirm the submission."
++                            failed = true
++                        }
++                    } catch (e: Exception) {
++                        message = "Could not submit report. Check your connection and try again."
++                        failed = true
++                    } finally {
++                        loading = false
++                    }
++                }
++            },
++            enabled = !loading,
++            modifier = Modifier.fillMaxWidth(),
++            colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
++        ) {
++            if (loading) {
++                CircularProgressIndicator()
++            } else {
++                Text("Submit Report", color = Color.White)
++            }
++        }
++
++        OutlinedButton(
++            onClick = onBack,
++            enabled = !loading,
++            modifier = Modifier.fillMaxWidth()
++        ) {
++            Text("Cancel")
++        }
++    }
++}
++
++@Composable
++private fun ReportItemCard(report: ReportItem) {
++    Column(
++        modifier = Modifier
++            .fillMaxWidth()
++            .background(
++                color = MaterialTheme.colorScheme.surfaceVariant,
++                shape = RoundedCornerShape(12.dp)
++            )
++            .padding(16.dp),
++        verticalArrangement = Arrangement.spacedBy(6.dp)
++    ) {
++        Text(
++            text = report.report_type,
++            style = MaterialTheme.typography.titleMedium,
++            color = EcoDarkGreen
++        )
++        Text(report.description)
++
++        report.location_details?.takeIf { it.isNotBlank() }?.let {
++            Text("Location: $it")
++        }
++
++        Text("Report ID: #RPT-${report.report_id}")
++        Text(
++            text = "Status: ${report.status}",
++            color = if (report.status.equals("Resolved", true)) {
++                EcoGreen
++            } else {
++                MaterialTheme.colorScheme.onSurface
++            }
++        )
++        report.created_at?.let {
++            Text(
++                text = "Submitted: ${it.take(10)}",
++                style = MaterialTheme.typography.bodySmall
+             )
+         }
+     }
+Index: app/src/main/java/edp/app/ecotrack/screens/NewReportScreen.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package edp.app.ecotrack.screens\r\n\r\nimport android.graphics.Bitmap\r\nimport android.graphics.BitmapFactory\r\nimport android.net.Uri\r\nimport androidx.activity.compose.rememberLauncherForActivityResult\r\nimport androidx.activity.result.contract.ActivityResultContracts\r\nimport androidx.compose.foundation.Image\r\nimport androidx.compose.foundation.background\r\nimport androidx.compose.foundation.clickable\r\nimport androidx.compose.foundation.layout.Arrangement\r\nimport androidx.compose.foundation.layout.Box\r\nimport androidx.compose.foundation.layout.Column\r\nimport androidx.compose.foundation.layout.Row\r\nimport androidx.compose.foundation.layout.Spacer\r\nimport androidx.compose.foundation.layout.fillMaxSize\r\nimport androidx.compose.foundation.layout.fillMaxWidth\r\nimport androidx.compose.foundation.layout.height\r\nimport androidx.compose.foundation.layout.padding\r\nimport androidx.compose.foundation.layout.size\r\nimport androidx.compose.foundation.layout.width\r\nimport androidx.compose.foundation.rememberScrollState\r\nimport androidx.compose.foundation.shape.RoundedCornerShape\r\nimport androidx.compose.foundation.verticalScroll\r\nimport androidx.compose.material.icons.Icons\r\nimport androidx.compose.material.icons.automirrored.filled.ArrowBack\r\nimport androidx.compose.material.icons.filled.AddAPhoto\r\nimport androidx.compose.material.icons.filled.LocationOn\r\nimport androidx.compose.material3.Button\r\nimport androidx.compose.material3.ButtonDefaults\r\nimport androidx.compose.material3.Card\r\nimport androidx.compose.material3.CardDefaults\r\nimport androidx.compose.material3.Icon\r\nimport androidx.compose.material3.IconButton\r\nimport androidx.compose.material3.MaterialTheme\r\nimport androidx.compose.material3.OutlinedTextField\r\nimport androidx.compose.material3.OutlinedTextFieldDefaults\r\nimport androidx.compose.material3.Text\r\nimport androidx.compose.runtime.Composable\r\nimport androidx.compose.runtime.LaunchedEffect\r\nimport androidx.compose.runtime.getValue\r\nimport androidx.compose.runtime.mutableStateOf\r\nimport androidx.compose.runtime.remember\r\nimport androidx.compose.runtime.setValue\r\nimport androidx.compose.ui.Alignment\r\nimport androidx.compose.ui.Modifier\r\nimport androidx.compose.ui.draw.clip\r\nimport androidx.compose.ui.graphics.Color\r\nimport androidx.compose.ui.graphics.asImageBitmap\r\nimport androidx.compose.ui.layout.ContentScale\r\nimport androidx.compose.ui.platform.LocalContext\r\nimport androidx.compose.ui.text.font.FontWeight\r\nimport androidx.compose.ui.unit.dp\r\nimport edp.app.ecotrack.ui.theme.EcoDarkGreen\r\nimport edp.app.ecotrack.ui.theme.EcoGreen\r\nimport edp.app.ecotrack.ui.theme.EcoSubmitGreen\r\nimport kotlinx.coroutines.Dispatchers\r\nimport kotlinx.coroutines.withContext\r\n\r\n@Composable\r\nfun NewReportScreen(\r\n    onBack: () -> Unit\r\n) {\r\n\r\n    var selectedIssue by remember {\r\n        mutableStateOf(\"Illegal Dumping\")\r\n    }\r\n\r\n    var locationText by remember {\r\n        mutableStateOf(\"Zone 10, Bulua\")\r\n    }\r\n\r\n    var description by remember {\r\n        mutableStateOf(\"\")\r\n    }\r\n\r\n    var photoUri by remember {\r\n        mutableStateOf<Uri?>(null)\r\n    }\r\n\r\n    var selectedBitmap by remember {\r\n        mutableStateOf<Bitmap?>(null)\r\n    }\r\n\r\n    val context = LocalContext.current\r\n\r\n    val photoPickerLauncher =\r\n        rememberLauncherForActivityResult(\r\n            contract = ActivityResultContracts.GetContent()\r\n        ) { uri ->\r\n            photoUri = uri\r\n        }\r\n\r\n    LaunchedEffect(photoUri) {\r\n        selectedBitmap = null\r\n        val uri = photoUri\r\n        if (uri != null) {\r\n            selectedBitmap = withContext(Dispatchers.IO) {\r\n                val inputStream = context.contentResolver.openInputStream(uri)\r\n                inputStream?.use {\r\n                    BitmapFactory.decodeStream(it)\r\n                }\r\n            }\r\n        }\r\n    }\r\n\r\n    val hasPhoto = photoUri != null\r\n\r\n    Column(\r\n        modifier = Modifier\r\n            .fillMaxSize()\r\n            .background(MaterialTheme.colorScheme.background)\r\n            .verticalScroll(rememberScrollState())\r\n    ) {\r\n\r\n        Row(\r\n            modifier = Modifier\r\n                .fillMaxWidth()\r\n                .background(EcoDarkGreen)\r\n                .padding(\r\n                    start = 12.dp,\r\n                    end = 24.dp,\r\n                    top = 28.dp,\r\n                    bottom = 20.dp\r\n                ),\r\n            verticalAlignment = Alignment.CenterVertically\r\n        ) {\r\n\r\n            IconButton(\r\n                onClick = onBack\r\n            ) {\r\n                Icon(\r\n                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,\r\n                    contentDescription = \"Back\",\r\n                    tint = Color.White\r\n                )\r\n            }\r\n\r\n            Spacer(\r\n                modifier = Modifier.width(4.dp)\r\n            )\r\n\r\n            Column(\r\n                modifier = Modifier.weight(1f)\r\n            ) {\r\n\r\n                Text(\r\n                    text = \"New Report\",\r\n                    color = Color.White,\r\n                    style = MaterialTheme.typography.headlineMedium\r\n                )\r\n\r\n                Spacer(\r\n                    modifier = Modifier.height(3.dp)\r\n                )\r\n\r\n                Text(\r\n                    text = \"Submit a waste management issue in your area\",\r\n                    color = Color.White.copy(alpha = 0.8f),\r\n                    style = MaterialTheme.typography.bodySmall\r\n                )\r\n            }\r\n        }\r\n\r\n        Spacer(\r\n            modifier = Modifier.height(20.dp)\r\n        )\r\n\r\n        Column(\r\n            modifier = Modifier\r\n                .fillMaxWidth()\r\n                .padding(horizontal = 24.dp)\r\n        ) {\r\n\r\n            Text(\r\n                text = \"ISSUE TYPE\",\r\n                color = EcoDarkGreen,\r\n                style = MaterialTheme.typography.labelMedium\r\n            )\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(10.dp)\r\n            )\r\n\r\n            Column(\r\n                verticalArrangement = Arrangement.spacedBy(8.dp)\r\n            ) {\r\n\r\n                Row(\r\n                    modifier = Modifier.fillMaxWidth(),\r\n                    horizontalArrangement = Arrangement.spacedBy(8.dp)\r\n                ) {\r\n\r\n                    IssueButton(\r\n                        text = \"Illegal Dumping\",\r\n                        selected = selectedIssue == \"Illegal Dumping\",\r\n                        onClick = {\r\n                            selectedIssue = \"Illegal Dumping\"\r\n                        },\r\n                        modifier = Modifier.weight(1f)\r\n                    )\r\n\r\n                    IssueButton(\r\n                        text = \"Overflowing Bin\",\r\n                        selected = selectedIssue == \"Overflowing Bin\",\r\n                        onClick = {\r\n                            selectedIssue = \"Overflowing Bin\"\r\n                        },\r\n                        modifier = Modifier.weight(1f)\r\n                    )\r\n                }\r\n\r\n                Row(\r\n                    modifier = Modifier.fillMaxWidth(),\r\n                    horizontalArrangement = Arrangement.spacedBy(8.dp)\r\n                ) {\r\n\r\n                    IssueButton(\r\n                        text = \"Missed Collection\",\r\n                        selected = selectedIssue == \"Missed Collection\",\r\n                        onClick = {\r\n                            selectedIssue = \"Missed Collection\"\r\n                        },\r\n                        modifier = Modifier.weight(1f)\r\n                    )\r\n\r\n                    IssueButton(\r\n                        text = \"Unsegregated Waste\",\r\n                        selected = selectedIssue == \"Unsegregated Waste\",\r\n                        onClick = {\r\n                            selectedIssue = \"Unsegregated Waste\"\r\n                        },\r\n                        modifier = Modifier.weight(1f)\r\n                    )\r\n                }\r\n            }\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(20.dp)\r\n            )\r\n\r\n            // Location Section (Restored information)\r\n            Text(\r\n                text = \"LOCATION / BARANGAY ZONE\",\r\n                color = EcoDarkGreen,\r\n                style = MaterialTheme.typography.labelMedium\r\n            )\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(8.dp)\r\n            )\r\n\r\n            OutlinedTextField(\r\n                value = locationText,\r\n                onValueChange = {\r\n                    locationText = it\r\n                },\r\n                modifier = Modifier.fillMaxWidth(),\r\n                leadingIcon = {\r\n                    Icon(\r\n                        imageVector = Icons.Default.LocationOn,\r\n                        contentDescription = \"Location\",\r\n                        tint = EcoGreen\r\n                    )\r\n                },\r\n                placeholder = {\r\n                    Text(\"e.g. Zone 10, Bulua, near Chapel\")\r\n                },\r\n                shape = RoundedCornerShape(12.dp),\r\n                colors = OutlinedTextFieldDefaults.colors(\r\n                    focusedBorderColor = EcoGreen,\r\n                    unfocusedBorderColor = Color(0xFFC8DEC2),\r\n                    focusedContainerColor = Color.White,\r\n                    unfocusedContainerColor = Color.White\r\n                )\r\n            )\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(20.dp)\r\n            )\r\n\r\n            Text(\r\n                text = \"DESCRIPTION\",\r\n                color = EcoDarkGreen,\r\n                style = MaterialTheme.typography.labelMedium\r\n            )\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(8.dp)\r\n            )\r\n\r\n            OutlinedTextField(\r\n                value = description,\r\n                onValueChange = {\r\n                    description = it\r\n                },\r\n                modifier = Modifier\r\n                    .fillMaxWidth()\r\n                    .height(110.dp),\r\n                placeholder = {\r\n                    Text(\"Describe the waste issue or details...\")\r\n                },\r\n                shape = RoundedCornerShape(12.dp),\r\n                colors = OutlinedTextFieldDefaults.colors(\r\n                    focusedBorderColor = EcoGreen,\r\n                    unfocusedBorderColor = Color(0xFFC8DEC2),\r\n                    focusedContainerColor = Color.White,\r\n                    unfocusedContainerColor = Color.White\r\n                ),\r\n                maxLines = 4\r\n            )\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(20.dp)\r\n            )\r\n\r\n            Text(\r\n                text = \"ATTACH PHOTO\",\r\n                color = EcoDarkGreen,\r\n                style = MaterialTheme.typography.labelMedium\r\n            )\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(8.dp)\r\n            )\r\n\r\n            Card(\r\n                modifier = Modifier\r\n                    .fillMaxWidth()\r\n                    .height(160.dp)\r\n                    .clickable {\r\n                        photoPickerLauncher.launch(\"image/*\")\r\n                    },\r\n                shape = RoundedCornerShape(14.dp),\r\n                colors = CardDefaults.cardColors(\r\n                    containerColor = if (hasPhoto) Color.White else EcoSubmitGreen.copy(alpha = 0.5f)\r\n                ),\r\n                elevation = CardDefaults.cardElevation(\r\n                    defaultElevation = 0.dp\r\n                )\r\n            ) {\r\n\r\n                Box(\r\n                    modifier = Modifier.fillMaxSize(),\r\n                    contentAlignment = Alignment.Center\r\n                ) {\r\n\r\n                    if (selectedBitmap != null) {\r\n\r\n                        Image(\r\n                            bitmap = selectedBitmap!!.asImageBitmap(),\r\n                            contentDescription = \"Selected photo\",\r\n                            modifier = Modifier\r\n                                .fillMaxSize()\r\n                                .clip(RoundedCornerShape(14.dp)),\r\n                            contentScale = ContentScale.Crop\r\n                        )\r\n\r\n                    } else {\r\n\r\n                        Column(\r\n                            horizontalAlignment = Alignment.CenterHorizontally\r\n                        ) {\r\n\r\n                            Icon(\r\n                                imageVector = Icons.Default.AddAPhoto,\r\n                                contentDescription = \"Upload photo\",\r\n                                tint = EcoDarkGreen,\r\n                                modifier = Modifier.size(36.dp)\r\n                            )\r\n\r\n                            Spacer(\r\n                                modifier = Modifier.height(8.dp)\r\n                            )\r\n\r\n                            Text(\r\n                                text = \"Tap to upload a photo\",\r\n                                color = EcoDarkGreen,\r\n                                style = MaterialTheme.typography.bodyMedium,\r\n                                fontWeight = FontWeight.Medium\r\n                            )\r\n\r\n                            Spacer(\r\n                                modifier = Modifier.height(2.dp)\r\n                            )\r\n\r\n                            Text(\r\n                                text = \"PNG or JPG up to 10MB\",\r\n                                color = MaterialTheme.colorScheme.onSurfaceVariant,\r\n                                style = MaterialTheme.typography.bodySmall\r\n                            )\r\n                        }\r\n                    }\r\n                }\r\n            }\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(28.dp)\r\n            )\r\n\r\n            Button(\r\n                onClick = {\r\n                    onBack()\r\n                },\r\n                modifier = Modifier\r\n                    .fillMaxWidth()\r\n                    .height(50.dp),\r\n                shape = RoundedCornerShape(12.dp),\r\n                colors = ButtonDefaults.buttonColors(\r\n                    containerColor = EcoGreen,\r\n                    disabledContainerColor = EcoSubmitGreen,\r\n                    disabledContentColor = EcoDarkGreen\r\n                )\r\n            ) {\r\n\r\n                Text(\r\n                    text = \"Submit Report\",\r\n                    color = Color.White,\r\n                    style = MaterialTheme.typography.titleMedium\r\n                )\r\n            }\r\n\r\n            Spacer(\r\n                modifier = Modifier.height(30.dp)\r\n            )\r\n        }\r\n    }\r\n}\r\n\r\n@Composable\r\nprivate fun IssueButton(\r\n    text: String,\r\n    selected: Boolean,\r\n    onClick: () -> Unit,\r\n    modifier: Modifier = Modifier\r\n) {\r\n\r\n    Card(\r\n        modifier = modifier.clickable {\r\n            onClick()\r\n        },\r\n        shape = RoundedCornerShape(12.dp),\r\n        colors = CardDefaults.cardColors(\r\n            containerColor = if (selected) {\r\n                EcoGreen\r\n            } else {\r\n                EcoSubmitGreen.copy(alpha = 0.6f)\r\n            }\r\n        ),\r\n        elevation = CardDefaults.cardElevation(\r\n            defaultElevation = 0.dp\r\n        )\r\n    ) {\r\n\r\n        Box(\r\n            modifier = Modifier.padding(\r\n                horizontal = 12.dp,\r\n                vertical = 12.dp\r\n            ),\r\n            contentAlignment = Alignment.Center\r\n        ) {\r\n\r\n            Text(\r\n                text = text,\r\n                color = if (selected) {\r\n                    Color.White\r\n                } else {\r\n                    EcoDarkGreen\r\n                },\r\n                style = MaterialTheme.typography.bodySmall,\r\n                fontWeight = if (selected) {\r\n                    FontWeight.Bold\r\n                } else {\r\n                    FontWeight.Medium\r\n                }\r\n            )\r\n        }\r\n    }\r\n}\r\n
+===================================================================
+diff --git a/app/src/main/java/edp/app/ecotrack/screens/NewReportScreen.kt b/app/src/main/java/edp/app/ecotrack/screens/NewReportScreen.kt
+--- a/app/src/main/java/edp/app/ecotrack/screens/NewReportScreen.kt	(revision 20f779bbee69f862d79e8038afeea4ccc1174da4)
++++ b/app/src/main/java/edp/app/ecotrack/screens/NewReportScreen.kt	(date 1792242959191)
+@@ -1,15 +1,6 @@
+-package edp.app.ecotrack.screens
++package edp.app.ecotrack
+ 
+-import android.graphics.Bitmap
+-import android.graphics.BitmapFactory
+-import android.net.Uri
+-import androidx.activity.compose.rememberLauncherForActivityResult
+-import androidx.activity.result.contract.ActivityResultContracts
+-import androidx.compose.foundation.Image
+-import androidx.compose.foundation.background
+-import androidx.compose.foundation.clickable
+ import androidx.compose.foundation.layout.Arrangement
+-import androidx.compose.foundation.layout.Box
+ import androidx.compose.foundation.layout.Column
+ import androidx.compose.foundation.layout.Row
+ import androidx.compose.foundation.layout.Spacer
+@@ -17,463 +8,235 @@
+ import androidx.compose.foundation.layout.fillMaxWidth
+ import androidx.compose.foundation.layout.height
+ import androidx.compose.foundation.layout.padding
+-import androidx.compose.foundation.layout.size
+-import androidx.compose.foundation.layout.width
+ import androidx.compose.foundation.rememberScrollState
+-import androidx.compose.foundation.shape.RoundedCornerShape
+ import androidx.compose.foundation.verticalScroll
+-import androidx.compose.material.icons.Icons
+-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+-import androidx.compose.material.icons.filled.AddAPhoto
+-import androidx.compose.material.icons.filled.LocationOn
+ import androidx.compose.material3.Button
+-import androidx.compose.material3.ButtonDefaults
+-import androidx.compose.material3.Card
+-import androidx.compose.material3.CardDefaults
+-import androidx.compose.material3.Icon
+-import androidx.compose.material3.IconButton
++import androidx.compose.material3.CircularProgressIndicator
++import androidx.compose.material3.DropdownMenuItem
++import androidx.compose.material3.ExperimentalMaterial3Api
++import androidx.compose.material3.ExposedDropdownMenuBox
++import androidx.compose.material3.ExposedDropdownMenuDefaults
+ import androidx.compose.material3.MaterialTheme
+ import androidx.compose.material3.OutlinedTextField
+-import androidx.compose.material3.OutlinedTextFieldDefaults
+ import androidx.compose.material3.Text
+ import androidx.compose.runtime.Composable
+-import androidx.compose.runtime.LaunchedEffect
+ import androidx.compose.runtime.getValue
+ import androidx.compose.runtime.mutableStateOf
+ import androidx.compose.runtime.remember
++import androidx.compose.runtime.rememberCoroutineScope
+ import androidx.compose.runtime.setValue
+-import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
+-import androidx.compose.ui.draw.clip
+-import androidx.compose.ui.graphics.Color
+-import androidx.compose.ui.graphics.asImageBitmap
+-import androidx.compose.ui.layout.ContentScale
+-import androidx.compose.ui.platform.LocalContext
+-import androidx.compose.ui.text.font.FontWeight
+ import androidx.compose.ui.unit.dp
+-import edp.app.ecotrack.ui.theme.EcoDarkGreen
+-import edp.app.ecotrack.ui.theme.EcoGreen
+-import edp.app.ecotrack.ui.theme.EcoSubmitGreen
+-import kotlinx.coroutines.Dispatchers
+-import kotlinx.coroutines.withContext
++import kotlinx.coroutines.launch
+ 
++private data class ReportTypeOption(
++    val label: String,
++    val apiValue: String
++)
++
++@OptIn(ExperimentalMaterial3Api::class)
+ @Composable
+ fun NewReportScreen(
+-    onBack: () -> Unit
++    accessToken: String,
++    onBack: () -> Unit,
++    onReportSubmitted: () -> Unit = onBack
+ ) {
+-
+-    var selectedIssue by remember {
+-        mutableStateOf("Illegal Dumping")
+-    }
+-
+-    var locationText by remember {
+-        mutableStateOf("Zone 10, Bulua")
+-    }
+-
+-    var description by remember {
+-        mutableStateOf("")
+-    }
+-
+-    var photoUri by remember {
+-        mutableStateOf<Uri?>(null)
+-    }
+-
+-    var selectedBitmap by remember {
+-        mutableStateOf<Bitmap?>(null)
+-    }
+-
+-    val context = LocalContext.current
+-
+-    val photoPickerLauncher =
+-        rememberLauncherForActivityResult(
+-            contract = ActivityResultContracts.GetContent()
+-        ) { uri ->
+-            photoUri = uri
+-        }
++    val reportTypes = listOf(
++        ReportTypeOption("Uncollected Garbage", "Uncollected Garbage"),
++        ReportTypeOption("Overflowing Bin", "Overflowing Garbage"),
++        ReportTypeOption("Illegal Dumping", "Illegal Dumping"),
++        ReportTypeOption("Other", "Other")
++    )
+ 
+-    LaunchedEffect(photoUri) {
+-        selectedBitmap = null
+-        val uri = photoUri
+-        if (uri != null) {
+-            selectedBitmap = withContext(Dispatchers.IO) {
+-                val inputStream = context.contentResolver.openInputStream(uri)
+-                inputStream?.use {
+-                    BitmapFactory.decodeStream(it)
+-                }
+-            }
+-        }
++    var selectedType by remember {
++        mutableStateOf(reportTypes[0])
+     }
++    var expanded by remember { mutableStateOf(false) }
++    var location by remember { mutableStateOf("") }
++    var description by remember { mutableStateOf("") }
++    var isSubmitting by remember { mutableStateOf(false) }
++    var errorMessage by remember { mutableStateOf<String?>(null) }
++    var successMessage by remember { mutableStateOf<String?>(null) }
+ 
+-    val hasPhoto = photoUri != null
++    val scope = rememberCoroutineScope()
+ 
+     Column(
+         modifier = Modifier
+             .fillMaxSize()
+-            .background(MaterialTheme.colorScheme.background)
+             .verticalScroll(rememberScrollState())
++            .padding(20.dp),
++        verticalArrangement = Arrangement.spacedBy(12.dp)
+     ) {
+-
+-        Row(
+-            modifier = Modifier
+-                .fillMaxWidth()
+-                .background(EcoDarkGreen)
+-                .padding(
+-                    start = 12.dp,
+-                    end = 24.dp,
+-                    top = 28.dp,
+-                    bottom = 20.dp
+-                ),
+-            verticalAlignment = Alignment.CenterVertically
+-        ) {
+-
+-            IconButton(
+-                onClick = onBack
+-            ) {
+-                Icon(
+-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+-                    contentDescription = "Back",
+-                    tint = Color.White
+-                )
+-            }
+-
+-            Spacer(
+-                modifier = Modifier.width(4.dp)
+-            )
+-
+-            Column(
+-                modifier = Modifier.weight(1f)
+-            ) {
+-
+-                Text(
+-                    text = "New Report",
+-                    color = Color.White,
+-                    style = MaterialTheme.typography.headlineMedium
+-                )
+-
+-                Spacer(
+-                    modifier = Modifier.height(3.dp)
+-                )
++        Text(
++            text = "New Garbage Report",
++            style = MaterialTheme.typography.headlineSmall
++        )
+ 
+-                Text(
+-                    text = "Submit a waste management issue in your area",
+-                    color = Color.White.copy(alpha = 0.8f),
+-                    style = MaterialTheme.typography.bodySmall
+-                )
+-            }
+-        }
++        Text(
++            text = "Report a garbage collection or disposal issue.",
++            style = MaterialTheme.typography.bodyMedium
++        )
+ 
+-        Spacer(
+-            modifier = Modifier.height(20.dp)
+-        )
+-
+-        Column(
+-            modifier = Modifier
+-                .fillMaxWidth()
+-                .padding(horizontal = 24.dp)
+-        ) {
+-
+-            Text(
+-                text = "ISSUE TYPE",
+-                color = EcoDarkGreen,
+-                style = MaterialTheme.typography.labelMedium
+-            )
+-
+-            Spacer(
+-                modifier = Modifier.height(10.dp)
++        ExposedDropdownMenuBox(
++            expanded = expanded,
++            onExpandedChange = { expanded = !expanded }
++        ) {
++            OutlinedTextField(
++                value = selectedType.label,
++                onValueChange = {},
++                readOnly = true,
++                label = { Text("Report Type") },
++                trailingIcon = {
++                    ExposedDropdownMenuDefaults.TrailingIcon(
++                        expanded = expanded
++                    )
++                },
++                modifier = Modifier
++                    .menuAnchor()
++                    .fillMaxWidth()
+             )
+ 
+-            Column(
+-                verticalArrangement = Arrangement.spacedBy(8.dp)
++            ExposedDropdownMenu(
++                expanded = expanded,
++                onDismissRequest = { expanded = false }
+             ) {
+-
+-                Row(
+-                    modifier = Modifier.fillMaxWidth(),
+-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+-                ) {
+-
+-                    IssueButton(
+-                        text = "Illegal Dumping",
+-                        selected = selectedIssue == "Illegal Dumping",
++                reportTypes.forEach { option ->
++                    DropdownMenuItem(
++                        text = { Text(option.label) },
+                         onClick = {
+-                            selectedIssue = "Illegal Dumping"
+-                        },
+-                        modifier = Modifier.weight(1f)
+-                    )
+-
+-                    IssueButton(
+-                        text = "Overflowing Bin",
+-                        selected = selectedIssue == "Overflowing Bin",
+-                        onClick = {
+-                            selectedIssue = "Overflowing Bin"
+-                        },
+-                        modifier = Modifier.weight(1f)
+-                    )
+-                }
+-
+-                Row(
+-                    modifier = Modifier.fillMaxWidth(),
+-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+-                ) {
+-
+-                    IssueButton(
+-                        text = "Missed Collection",
+-                        selected = selectedIssue == "Missed Collection",
+-                        onClick = {
+-                            selectedIssue = "Missed Collection"
+-                        },
+-                        modifier = Modifier.weight(1f)
+-                    )
+-
+-                    IssueButton(
+-                        text = "Unsegregated Waste",
+-                        selected = selectedIssue == "Unsegregated Waste",
+-                        onClick = {
+-                            selectedIssue = "Unsegregated Waste"
+-                        },
+-                        modifier = Modifier.weight(1f)
++                            selectedType = option
++                            expanded = false
++                        }
+                     )
+                 }
+             }
+-
+-            Spacer(
+-                modifier = Modifier.height(20.dp)
+-            )
+-
+-            // Location Section (Restored information)
+-            Text(
+-                text = "LOCATION / BARANGAY ZONE",
+-                color = EcoDarkGreen,
+-                style = MaterialTheme.typography.labelMedium
+-            )
+-
+-            Spacer(
+-                modifier = Modifier.height(8.dp)
+-            )
++        }
+ 
+-            OutlinedTextField(
+-                value = locationText,
+-                onValueChange = {
+-                    locationText = it
+-                },
+-                modifier = Modifier.fillMaxWidth(),
+-                leadingIcon = {
+-                    Icon(
+-                        imageVector = Icons.Default.LocationOn,
+-                        contentDescription = "Location",
+-                        tint = EcoGreen
+-                    )
+-                },
+-                placeholder = {
+-                    Text("e.g. Zone 10, Bulua, near Chapel")
+-                },
+-                shape = RoundedCornerShape(12.dp),
+-                colors = OutlinedTextFieldDefaults.colors(
+-                    focusedBorderColor = EcoGreen,
+-                    unfocusedBorderColor = Color(0xFFC8DEC2),
+-                    focusedContainerColor = Color.White,
+-                    unfocusedContainerColor = Color.White
+-                )
+-            )
+-
+-            Spacer(
+-                modifier = Modifier.height(20.dp)
+-            )
+-
+-            Text(
+-                text = "DESCRIPTION",
+-                color = EcoDarkGreen,
+-                style = MaterialTheme.typography.labelMedium
+-            )
+-
+-            Spacer(
+-                modifier = Modifier.height(8.dp)
+-            )
++        OutlinedTextField(
++            value = location,
++            onValueChange = {
++                location = it
++                errorMessage = null
++            },
++            label = { Text("Location") },
++            placeholder = { Text("Enter street, zone, or landmark") },
++            modifier = Modifier.fillMaxWidth(),
++            singleLine = true
++        )
+ 
+-            OutlinedTextField(
+-                value = description,
+-                onValueChange = {
+-                    description = it
+-                },
+-                modifier = Modifier
+-                    .fillMaxWidth()
+-                    .height(110.dp),
+-                placeholder = {
+-                    Text("Describe the waste issue or details...")
+-                },
+-                shape = RoundedCornerShape(12.dp),
+-                colors = OutlinedTextFieldDefaults.colors(
+-                    focusedBorderColor = EcoGreen,
+-                    unfocusedBorderColor = Color(0xFFC8DEC2),
+-                    focusedContainerColor = Color.White,
+-                    unfocusedContainerColor = Color.White
+-                ),
+-                maxLines = 4
+-            )
+-
+-            Spacer(
+-                modifier = Modifier.height(20.dp)
+-            )
+-
+-            Text(
+-                text = "ATTACH PHOTO",
+-                color = EcoDarkGreen,
+-                style = MaterialTheme.typography.labelMedium
+-            )
+-
+-            Spacer(
+-                modifier = Modifier.height(8.dp)
+-            )
+-
+-            Card(
+-                modifier = Modifier
+-                    .fillMaxWidth()
+-                    .height(160.dp)
+-                    .clickable {
+-                        photoPickerLauncher.launch("image/*")
+-                    },
+-                shape = RoundedCornerShape(14.dp),
+-                colors = CardDefaults.cardColors(
+-                    containerColor = if (hasPhoto) Color.White else EcoSubmitGreen.copy(alpha = 0.5f)
+-                ),
+-                elevation = CardDefaults.cardElevation(
+-                    defaultElevation = 0.dp
+-                )
+-            ) {
++        OutlinedTextField(
++            value = description,
++            onValueChange = {
++                description = it
++                errorMessage = null
++            },
++            label = { Text("Description") },
++            placeholder = {
++                Text("Describe the garbage problem")
++            },
++            modifier = Modifier.fillMaxWidth(),
++            minLines = 4
++        )
+ 
+-                Box(
+-                    modifier = Modifier.fillMaxSize(),
+-                    contentAlignment = Alignment.Center
+-                ) {
+-
+-                    if (selectedBitmap != null) {
+-
+-                        Image(
+-                            bitmap = selectedBitmap!!.asImageBitmap(),
+-                            contentDescription = "Selected photo",
+-                            modifier = Modifier
+-                                .fillMaxSize()
+-                                .clip(RoundedCornerShape(14.dp)),
+-                            contentScale = ContentScale.Crop
+-                        )
+-
+-                    } else {
+-
+-                        Column(
+-                            horizontalAlignment = Alignment.CenterHorizontally
+-                        ) {
+-
+-                            Icon(
+-                                imageVector = Icons.Default.AddAPhoto,
+-                                contentDescription = "Upload photo",
+-                                tint = EcoDarkGreen,
+-                                modifier = Modifier.size(36.dp)
+-                            )
+-
+-                            Spacer(
+-                                modifier = Modifier.height(8.dp)
+-                            )
+-
+-                            Text(
+-                                text = "Tap to upload a photo",
+-                                color = EcoDarkGreen,
+-                                style = MaterialTheme.typography.bodyMedium,
+-                                fontWeight = FontWeight.Medium
+-                            )
+-
+-                            Spacer(
+-                                modifier = Modifier.height(2.dp)
+-                            )
++        errorMessage?.let {
++            Text(
++                text = it,
++                color = MaterialTheme.colorScheme.error
++            )
++        }
+ 
+-                            Text(
+-                                text = "PNG or JPG up to 10MB",
+-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+-                                style = MaterialTheme.typography.bodySmall
+-                            )
+-                        }
+-                    }
+-                }
+-            }
+-
+-            Spacer(
+-                modifier = Modifier.height(28.dp)
+-            )
++        successMessage?.let {
++            Text(
++                text = it,
++                color = MaterialTheme.colorScheme.primary
++            )
++        }
+ 
+-            Button(
+-                onClick = {
+-                    onBack()
+-                },
+-                modifier = Modifier
+-                    .fillMaxWidth()
+-                    .height(50.dp),
+-                shape = RoundedCornerShape(12.dp),
+-                colors = ButtonDefaults.buttonColors(
+-                    containerColor = EcoGreen,
+-                    disabledContainerColor = EcoSubmitGreen,
+-                    disabledContentColor = EcoDarkGreen
+-                )
+-            ) {
++        Button(
++            onClick = {
++                errorMessage = null
++                successMessage = null
++
++                when {
++                    accessToken.isBlank() -> {
++                        errorMessage =
++                            "You must be logged in before submitting a report."
++                    }
++
++                    description.isBlank() -> {
++                        errorMessage =
++                            "Please enter a description of the problem."
++                    }
++
++                    else -> {
++                        scope.launch {
++                            isSubmitting = true
+ 
+-                Text(
+-                    text = "Submit Report",
+-                    color = Color.White,
+-                    style = MaterialTheme.typography.titleMedium
+-                )
+-            }
++                            try {
++                                val request = CreateReportRequest(
++                                    report_type = selectedType.apiValue,
++                                    description = description.trim(),
++                                    location_details = location.trim()
++                                        .ifBlank { null }
++                                )
+ 
+-            Spacer(
+-                modifier = Modifier.height(30.dp)
+-            )
+-        }
+-    }
+-}
+-
+-@Composable
+-private fun IssueButton(
+-    text: String,
+-    selected: Boolean,
+-    onClick: () -> Unit,
+-    modifier: Modifier = Modifier
+-) {
+-
+-    Card(
+-        modifier = modifier.clickable {
+-            onClick()
+-        },
+-        shape = RoundedCornerShape(12.dp),
+-        colors = CardDefaults.cardColors(
+-            containerColor = if (selected) {
+-                EcoGreen
++                                val response =
++                                    RetrofitClient.residentApi.submitReport(
++                                        authorization = "Bearer $accessToken",
++                                        request = request
++                                    )
++
++                                successMessage =
++                                    response.message
++                                        ?: "Report submitted successfully."
++
++                                onReportSubmitted()
++                            } catch (e: retrofit2.HttpException) {
++                                errorMessage = when (e.code()) {
++                                    401, 403 ->
++                                        "Your session may have expired. Please log in again."
++                                    else ->
++                                        "Server error (${e.code()}). Please try again."
++                                }
++                            } catch (e: java.io.IOException) {
++                                errorMessage =
++                                    "Cannot connect to the server. Check that your backend is running."
++                            } catch (e: Exception) {
++                                errorMessage =
++                                    e.localizedMessage
++                                        ?: "Something went wrong while submitting."
++                            } finally {
++                                isSubmitting = false
++                            }
++                        }
++                    }
++                }
++            },
++            enabled = !isSubmitting,
++            modifier = Modifier.fillMaxWidth()
++        ) {
++            if (isSubmitting) {
++                CircularProgressIndicator(
++                    modifier = Modifier.height(20.dp),
++                    strokeWidth = 2.dp
++                )
++                Spacer(modifier = Modifier.padding(start = 8.dp))
++                Text("Submitting...")
+             } else {
+-                EcoSubmitGreen.copy(alpha = 0.6f)
++                Text("Submit Report")
+             }
+-        ),
+-        elevation = CardDefaults.cardElevation(
+-            defaultElevation = 0.dp
+-        )
+-    ) {
+-
+-        Box(
+-            modifier = Modifier.padding(
+-                horizontal = 12.dp,
+-                vertical = 12.dp
+-            ),
+-            contentAlignment = Alignment.Center
+-        ) {
+-
+-            Text(
+-                text = text,
+-                color = if (selected) {
+-                    Color.White
+-                } else {
+-                    EcoDarkGreen
+-                },
+-                style = MaterialTheme.typography.bodySmall,
+-                fontWeight = if (selected) {
+-                    FontWeight.Bold
+-                } else {
+-                    FontWeight.Medium
+-                }
+-            )
++        }
++
++        Row(
++            modifier = Modifier.fillMaxWidth(),
++            horizontalArrangement = Arrangement.Center
++        ) {
++            Button(
++                onClick = onBack,
++                enabled = !isSubmitting
++            ) {
++                Text("Back")
++            }
+         }
+     }
+-}
++}
+\ No newline at end of file
