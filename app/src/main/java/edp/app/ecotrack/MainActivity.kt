@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import edp.app.ecotrack.navigation.EcoTrackNavigation
+import edp.app.ecotrack.navigation.AuthNavigation
 
 class MainActivity : ComponentActivity() {
 
