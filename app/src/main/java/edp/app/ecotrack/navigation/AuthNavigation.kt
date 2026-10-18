@@ -24,7 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import edp.app.ecotrack.network.ApiClient
-import edp.app.ecotrack.screens.HomeScreen
+import edp.app.ecotrack.EcoTrackApp
 import edp.app.ecotrack.screens.auth.WelcomeScreen
 import edp.app.ecotrack.screens.auth.LoginScreen
 import edp.app.ecotrack.screens.auth.RegisterScreen
@@ -173,8 +173,8 @@ fun AuthNavigation() {
             )
         }
 
-        composable(AuthRoutes.HOME) {
-            HomeScreen()
+       composable(AuthRoutes.HOME) {
+            EcoTrackApp()
         }
 
         composable(AuthRoutes.COLLECTOR_HOME) {
