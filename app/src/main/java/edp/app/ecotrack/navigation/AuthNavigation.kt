@@ -24,7 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import edp.app.ecotrack.network.ApiClient
-import edp.app.ecotrack.EcoTrackApp
+import edp.app.ecotrack.screens.HomeScreen
 import edp.app.ecotrack.screens.auth.WelcomeScreen
 import edp.app.ecotrack.screens.auth.LoginScreen
 import edp.app.ecotrack.screens.auth.RegisterScreen
@@ -187,9 +187,21 @@ fun AuthNavigation() {
             )
         }
 
-       composable(AuthRoutes.HOME) {
-            EcoTrackApp(
+        composable(AuthRoutes.HOME) { backStackEntry ->
+            val accessToken = backStackEntry.savedStateHandle
+                .get<String>("resident_access_token")
+                .orEmpty()
 
+            HomeScreen(
+                accessToken = accessToken,
+                onLogout = {
+                    navController.navigate(AuthRoutes.WELCOME) {
+                        popUpTo(0) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
+                }
             )
         }
 
