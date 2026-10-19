@@ -1,3 +1,4 @@
+
 package edp.app.ecotrack.screens
 
 import androidx.compose.foundation.background
@@ -27,35 +28,58 @@ import androidx.compose.material.icons.filled.Recycling
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import edp.app.ecotrack.components.QuickAction
 import edp.app.ecotrack.ui.theme.EcoDarkGreen
 import edp.app.ecotrack.ui.theme.EcoGreen
 import edp.app.ecotrack.ui.theme.EcoLightGreen
 import edp.app.ecotrack.ui.theme.EcoPaleGreen
 import edp.app.ecotrack.ui.theme.EcoResolvedGreen
+import edp.app.ecotrack.viewmodel.ResidentDashboardViewModel
 
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
+    accessToken: String = "",
     onScheduleClick: () -> Unit = {},
     onReportClick: () -> Unit = {},
     onGuideClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
-    onViewAllReportsClick: () -> Unit = {}
+    onViewAllReportsClick: () -> Unit = {},
+    dashboardViewModel: ResidentDashboardViewModel = viewModel()
 ) {
+    val dashboard by dashboardViewModel.dashboard.collectAsState()
+    val isLoading by dashboardViewModel.isLoading.collectAsState()
+    val errorMessage by dashboardViewModel.errorMessage.collectAsState()
+
+    LaunchedEffect(accessToken) {
+        if (accessToken.isNotBlank()) {
+            dashboardViewModel.loadDashboard(accessToken)
+        }
+    }
+
+    val residentName = dashboard?.user?.full_name
+        ?.takeIf { it.isNotBlank() } ?: "Resident"
+
+    val residentBarangay = dashboard?.user?.barangay
+        ?.takeIf { it.isNotBlank() } ?: "Your barangay"
 
     Column(
         modifier = modifier
@@ -63,7 +87,6 @@ fun HomeScreen(
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
     ) {
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -76,43 +99,32 @@ fun HomeScreen(
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Good morning 👋",
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium
                 )
 
-                Spacer(
-                    modifier = Modifier.height(4.dp)
-                )
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "Shania Castro",
+                    text = residentName,
                     color = Color.White,
                     style = MaterialTheme.typography.headlineMedium
                 )
 
-                Spacer(
-                    modifier = Modifier.height(5.dp)
-                )
+                Spacer(modifier = Modifier.height(5.dp))
 
                 Text(
-                    text = "Barangay Bulua, Zone 10",
+                    text = residentBarangay,
                     color = Color.White.copy(alpha = 0.8f),
                     style = MaterialTheme.typography.bodySmall
                 )
             }
 
             Box {
-
-                IconButton(
-                    onClick = onNotificationClick
-                ) {
+                IconButton(onClick = onNotificationClick) {
                     Icon(
                         imageVector = Icons.Default.NotificationsNone,
                         contentDescription = "Notifications",
@@ -131,9 +143,27 @@ fun HomeScreen(
             }
         }
 
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = EcoGreen)
+            }
+        }
+
+        if (errorMessage != null) {
+            Text(
+                text = errorMessage ?: "",
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
 
         Text(
             text = "NEXT COLLECTION",
@@ -142,9 +172,7 @@ fun HomeScreen(
             style = MaterialTheme.typography.labelMedium
         )
 
-        Spacer(
-            modifier = Modifier.height(8.dp)
-        )
+        Spacer(modifier = Modifier.height(8.dp))
 
         Card(
             modifier = Modifier
@@ -154,18 +182,14 @@ fun HomeScreen(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             ),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = 2.dp
-            )
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(17.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Box(
                     modifier = Modifier
                         .size(48.dp)
@@ -173,7 +197,6 @@ fun HomeScreen(
                         .background(EcoLightGreen),
                     contentAlignment = Alignment.Center
                 ) {
-
                     Icon(
                         imageVector = Icons.Default.Recycling,
                         contentDescription = "Biodegradable",
@@ -182,23 +205,16 @@ fun HomeScreen(
                     )
                 }
 
-                Spacer(
-                    modifier = Modifier.width(14.dp)
-                )
+                Spacer(modifier = Modifier.width(14.dp))
 
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Monday, Sep 16",
                         color = EcoDarkGreen,
                         style = MaterialTheme.typography.titleMedium
                     )
 
-                    Spacer(
-                        modifier = Modifier.height(4.dp)
-                    )
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
                         text = "Biodegradable",
@@ -206,9 +222,7 @@ fun HomeScreen(
                         style = MaterialTheme.typography.bodySmall
                     )
 
-                    Spacer(
-                        modifier = Modifier.height(3.dp)
-                    )
+                    Spacer(modifier = Modifier.height(3.dp))
 
                     Text(
                         text = "6:00 AM - 9:00 AM",
@@ -226,9 +240,7 @@ fun HomeScreen(
             }
         }
 
-        Spacer(
-            modifier = Modifier.height(22.dp)
-        )
+        Spacer(modifier = Modifier.height(22.dp))
 
         Text(
             text = "QUICK ACTIONS",
@@ -237,9 +249,7 @@ fun HomeScreen(
             style = MaterialTheme.typography.labelMedium
         )
 
-        Spacer(
-            modifier = Modifier.height(10.dp)
-        )
+        Spacer(modifier = Modifier.height(10.dp))
 
         Row(
             modifier = Modifier
@@ -247,7 +257,6 @@ fun HomeScreen(
                 .padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-
             QuickAction(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.CalendarMonth,
@@ -277,9 +286,7 @@ fun HomeScreen(
             )
         }
 
-        Spacer(
-            modifier = Modifier.height(25.dp)
-        )
+        Spacer(modifier = Modifier.height(25.dp))
 
         Row(
             modifier = Modifier
@@ -287,7 +294,6 @@ fun HomeScreen(
                 .padding(horizontal = 24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Text(
                 text = "RECENT REPORTS",
                 color = EcoDarkGreen,
@@ -305,9 +311,16 @@ fun HomeScreen(
             )
         }
 
-        Spacer(
-            modifier = Modifier.height(10.dp)
-        )
+        Spacer(modifier = Modifier.height(10.dp))
+
+        if (dashboard != null) {
+            Text(
+                text = "Total reports: ${dashboard!!.dashboard.total_reports}  •  Pending: ${dashboard!!.dashboard.pending_reports}",
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
 
         ReportItem(
             icon = Icons.Default.DeleteOutline,
@@ -325,25 +338,19 @@ fun HomeScreen(
             statusColor = Color(0xFFE89A32)
         )
 
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
+        Spacer(modifier = Modifier.height(20.dp))
 
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp),
             shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = EcoPaleGreen
-            )
+            colors = CardDefaults.cardColors(containerColor = EcoPaleGreen)
         ) {
-
             Row(
                 modifier = Modifier.padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Box(
                     modifier = Modifier
                         .size(42.dp)
@@ -351,7 +358,6 @@ fun HomeScreen(
                         .background(Color.White),
                     contentAlignment = Alignment.Center
                 ) {
-
                     Icon(
                         imageVector = Icons.Default.CalendarMonth,
                         contentDescription = "Reminder",
@@ -360,23 +366,16 @@ fun HomeScreen(
                     )
                 }
 
-                Spacer(
-                    modifier = Modifier.width(12.dp)
-                )
+                Spacer(modifier = Modifier.width(12.dp))
 
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Collection Reminder",
                         color = EcoDarkGreen,
                         style = MaterialTheme.typography.bodyMedium
                     )
 
-                    Spacer(
-                        modifier = Modifier.height(3.dp)
-                    )
+                    Spacer(modifier = Modifier.height(3.dp))
 
                     Text(
                         text = "Your next collection is on Monday.",
@@ -387,41 +386,33 @@ fun HomeScreen(
             }
         }
 
-        Spacer(
-            modifier = Modifier.height(25.dp)
-        )
+        Spacer(modifier = Modifier.height(25.dp))
     }
 }
 
 @Composable
 private fun ReportItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String,
     location: String,
     status: String,
     statusColor: Color
 ) {
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(
-                horizontal = 24.dp,
-                vertical = 5.dp
-            ),
+            .padding(horizontal = 24.dp, vertical = 5.dp),
         shape = RoundedCornerShape(11.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(13.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Box(
                 modifier = Modifier
                     .size(38.dp)
@@ -429,7 +420,6 @@ private fun ReportItem(
                     .background(EcoLightGreen),
                 contentAlignment = Alignment.Center
             ) {
-
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
@@ -438,23 +428,16 @@ private fun ReportItem(
                 )
             }
 
-            Spacer(
-                modifier = Modifier.width(11.dp)
-            )
+            Spacer(modifier = Modifier.width(11.dp))
 
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     color = EcoDarkGreen,
                     style = MaterialTheme.typography.bodySmall
                 )
 
-                Spacer(
-                    modifier = Modifier.height(3.dp)
-                )
+                Spacer(modifier = Modifier.height(3.dp))
 
                 Text(
                     text = location,
