@@ -75,47 +75,61 @@ fun AuthNavigation() {
                     loginMessage = ""
                     navController.navigate(AuthRoutes.FORGOT_PASSWORD)
                 },
-                onLogin = { email, password ->
-                    if (!isLoggingIn) {
-                        coroutineScope.launch {
-                            isLoggingIn = true
-                            loginMessage = ""
-
-                            try {
-                                val result = ApiClient.login(email, password)
-
-                                val user = result.optJSONObject("user")
-                                    ?: throw Exception(
-                                        "User information was not returned by the server."
-                                    )
-
-                                val role = user.optString("role")
-                                    .trim()
-                                    .lowercase()
-
-                                val destination = when (role) {
-                                    "resident" -> AuthRoutes.HOME
-                                    "garbage_collector" -> AuthRoutes.COLLECTOR_HOME
-                                    else -> throw Exception(
-                                        "Your account has an unrecognized role: $role"
-                                    )
-                                }
-
-                                navController.navigate(destination) {
-                                    popUpTo(AuthRoutes.WELCOME) {
-                                        inclusive = true
-                                    }
-                                    launchSingleTop = true
-                                }
-                            } catch (exception: Exception) {
-                                loginMessage = exception.message
-                                    ?: "Login failed. Please try again."
-                            } finally {
-                                isLoggingIn = false
+                
+            onLogin = { email, password ->
+                if (!isLoggingIn) {
+                    coroutineScope.launch {
+                        isLoggingIn = true
+                        loginMessage = ""
+            
+                        try {
+                            val result = ApiClient.login(email, password)
+            
+                            val accessToken = result.optString("access_token")
+                            if (accessToken.isBlank()) {
+                                throw Exception(
+                                    "No access token was returned by the server."
+                                )
                             }
+            
+                            val user = result.optJSONObject("user")
+                                ?: throw Exception(
+                                    "User information was not returned by the server."
+                                )
+            
+                            val role = user.optString("role")
+                                .trim()
+                                .lowercase()
+            
+                            val destination = when (role) {
+                                "resident" -> AuthRoutes.HOME
+                                "garbage_collector" -> AuthRoutes.COLLECTOR_HOME
+                                else -> throw Exception(
+                                    "Your account has an unrecognized role: $role"
+                                )
+                            }
+            
+                            if (role == "resident") {
+                                navController.currentBackStackEntry
+                                    ?.savedStateHandle
+                                    ?.set("resident_access_token", accessToken)
+                            }
+            
+                            navController.navigate(destination) {
+                                popUpTo(AuthRoutes.WELCOME) {
+                                    inclusive = true
+                                }
+                                launchSingleTop = true
+                            }
+                        } catch (exception: Exception) {
+                            loginMessage = exception.message
+                                ?: "Login failed. Please try again."
+                        } finally {
+                            isLoggingIn = false
                         }
                     }
-                },
+                }
+            },
                 loginMessage = loginMessage,
                 isLoading = isLoggingIn
             )
