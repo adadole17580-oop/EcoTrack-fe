@@ -15,8 +15,7 @@ class ResidentDashboardViewModel : ViewModel() {
     private val repository = ResidentDashboardRepository()
 
     private val _dashboard = MutableStateFlow<ResidentDashboardResponse?>(null)
-    val dashboard: StateFlow<ResidentDashboardResponse?> =
-        _dashboard.asStateFlow()
+    val dashboard: StateFlow<ResidentDashboardResponse?> = _dashboard.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -38,5 +37,23 @@ class ResidentDashboardViewModel : ViewModel() {
                 _isLoading.value = false
             }
         }
+    }
+
+    fun updateResidentProfile(
+        fullName: String,
+        phone: String,
+        address: String,
+        barangay: String
+    ) {
+        val currentDashboard = _dashboard.value ?: return
+
+        _dashboard.value = currentDashboard.copy(
+            user = currentDashboard.user.copy(
+                full_name = fullName,
+                phone = phone,
+                address = address,
+                barangay = barangay
+            )
+        )
     }
 }

@@ -1,4 +1,4 @@
-package edp.app.ecotrack.screens
+package edp.app.ecotrack.screens.residents
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +33,8 @@ import edp.app.ecotrack.ui.theme.EcoTextGreen
 
 @Composable
 fun LogoutDialog(
+    residentName: String,
+    residentEmail: String,
     onDismiss: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -134,14 +136,14 @@ fun LogoutDialog(
                 Column {
 
                     Text(
-                        text = "Shania Castro",
+                        text = residentName,
                         color = EcoDarkGreen,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
 
                     Text(
-                        text = "shaniacastro@gmail.com",
+                        text = residentEmail,
                         color = EcoTextGreen,
                         fontSize = 9.sp
                     )

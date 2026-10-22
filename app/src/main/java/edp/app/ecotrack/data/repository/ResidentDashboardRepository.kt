@@ -1,4 +1,3 @@
-
 package edp.app.ecotrack.data.repository
 
 import edp.app.ecotrack.data.model.ResidentDashboardData
@@ -14,7 +13,6 @@ class ResidentDashboardRepository {
     suspend fun getDashboard(accessToken: String): ResidentDashboardResponse =
         withContext(Dispatchers.IO) {
             val json = ApiClient.getResidentDashboard(accessToken)
-
             val userJson = json.optJSONObject("user") ?: JSONObject()
             val dashboardJson = json.optJSONObject("dashboard") ?: JSONObject()
 
@@ -26,7 +24,8 @@ class ResidentDashboardRepository {
                     email = userJson.optString("email"),
                     role = userJson.optString("role"),
                     phone = userJson.optString("phone"),
-                    barangay = userJson.optString("barangay")
+                    barangay = userJson.optString("barangay"),
+                    address = userJson.optString("address")
                 ),
                 dashboard = ResidentDashboardData(
                     upcoming_collections = dashboardJson.optInt("upcoming_collections"),

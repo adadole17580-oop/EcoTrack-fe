@@ -1,4 +1,4 @@
-package edp.app.ecotrack.screens
+package edp.app.ecotrack.screens.residents
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -31,13 +31,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import edp.app.ecotrack.ui.theme.EcoDarkGreen
 import edp.app.ecotrack.ui.theme.EcoGreen
-import edp.app.ecotrack.ui.theme.EcoLightGreen
 import edp.app.ecotrack.ui.theme.EcoTextGreen
 
 @Composable
 fun DeleteAccountDialog(
     onDismiss: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    isDeleting: Boolean = false
 ) {
 
     var confirmationText by remember {

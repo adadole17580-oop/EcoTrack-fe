@@ -1,3 +1,4 @@
+
 package edp.app.ecotrack.navigation
 
 import androidx.compose.animation.EnterTransition
@@ -12,23 +13,30 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import edp.app.ecotrack.screens.GuideScreen
-import edp.app.ecotrack.screens.HomeScreen
-import edp.app.ecotrack.screens.NotificationScreen
-import edp.app.ecotrack.screens.ProfileScreen
-import edp.app.ecotrack.screens.ReportScreen
-import edp.app.ecotrack.screens.ScheduleScreen
+import androidx.navigation.navArgument
+import androidx.lifecycle.viewmodel.compose.viewModel
+import edp.app.ecotrack.viewmodel.ResidentDashboardViewModel
+import edp.app.ecotrack.screens.residents.GuideScreen
+import edp.app.ecotrack.screens.residents.HomeScreen
+import edp.app.ecotrack.screens.residents.NotificationScreen
+import edp.app.ecotrack.screens.residents.ProfileScreen
+import edp.app.ecotrack.screens.residents.ReportDetailsScreen
+import edp.app.ecotrack.screens.residents.ReportScreen
+import edp.app.ecotrack.screens.residents.ScheduleScreen
 
 @Composable
 fun EcoTrackNavigation(
-    navController: NavHostController
+    navController: NavHostController,
+    accessToken: String,
+    onLogout: () -> Unit
 ) {
+    var isSlideAction by remember { mutableStateOf(false) }
+    var selectedReportId by remember { mutableStateOf<Long?>(null) }
 
-    var isSlideAction by remember {
-        mutableStateOf(false)
-    }
+    val dashboardViewModel: ResidentDashboardViewModel = viewModel()
 
     NavHost(
         navController = navController,
@@ -38,14 +46,16 @@ fun EcoTrackNavigation(
         popEnterTransition = { EnterTransition.None },
         popExitTransition = { ExitTransition.None }
     ) {
-
         composable(
             route = "home",
             enterTransition = {
                 if (isSlideAction) {
                     slideInHorizontally(
                         initialOffsetX = { -it },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                        animationSpec = tween(
+                            300,
+                            easing = FastOutSlowInEasing
+                        )
                     )
                 } else {
                     EnterTransition.None
@@ -55,43 +65,47 @@ fun EcoTrackNavigation(
                 if (isSlideAction) {
                     slideOutHorizontally(
                         targetOffsetX = { -it },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                        animationSpec = tween(
+                            300,
+                            easing = FastOutSlowInEasing
+                        )
                     )
                 } else {
                     ExitTransition.None
                 }
             }
         ) {
-
             HomeScreen(
+                accessToken = accessToken,
+                dashboardViewModel = dashboardViewModel,
+                onNotificationsClick = {
+                    isSlideAction = true
+                    navController.navigate("notifications")
+                },
+                onViewAllReportsClick = {
+                    isSlideAction = true
+                    navController.navigate("report")
+                },
                 onScheduleClick = {
                     isSlideAction = true
                     navController.navigate("schedule")
                 },
-
-                onReportClick = {
+                onViewSchedule = {
                     isSlideAction = true
-                    navController.navigate("report")
+                    navController.navigate("schedule")
                 },
-
-                onGuideClick = {
+                onQuickActionClick = { action: String ->
                     isSlideAction = true
-                    navController.navigate("guide")
+
+                    when (action) {
+                        "schedule" -> navController.navigate("schedule")
+                        "report" -> navController.navigate("report")
+                        "guide" -> navController.navigate("guide")
+                        "profile" -> navController.navigate("profile")
+                    }
                 },
-
-                onProfileClick = {
-                    isSlideAction = true
-                    navController.navigate("profile")
-                },
-
-                onNotificationClick = {
-                    isSlideAction = true
-                    navController.navigate("notifications")
-                },
-
-                onViewAllReportsClick = {
-                    isSlideAction = true
-                    navController.navigate("report")
+                onReportDetailsClick = { reportId ->
+                    selectedReportId = reportId
                 }
             )
         }
@@ -102,7 +116,10 @@ fun EcoTrackNavigation(
                 if (isSlideAction) {
                     slideInHorizontally(
                         initialOffsetX = { it },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                        animationSpec = tween(
+                            300,
+                            easing = FastOutSlowInEasing
+                        )
                     )
                 } else {
                     EnterTransition.None
@@ -112,15 +129,19 @@ fun EcoTrackNavigation(
                 if (isSlideAction) {
                     slideOutHorizontally(
                         targetOffsetX = { -it },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                        animationSpec = tween(
+                            300,
+                            easing = FastOutSlowInEasing
+                        )
                     )
                 } else {
                     ExitTransition.None
                 }
             }
         ) {
-
-            ScheduleScreen()
+            ScheduleScreen(
+                accessToken = accessToken
+            )
         }
 
         composable(
@@ -129,7 +150,10 @@ fun EcoTrackNavigation(
                 if (isSlideAction) {
                     slideInHorizontally(
                         initialOffsetX = { it },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                        animationSpec = tween(
+                            300,
+                            easing = FastOutSlowInEasing
+                        )
                     )
                 } else {
                     EnterTransition.None
@@ -139,15 +163,22 @@ fun EcoTrackNavigation(
                 if (isSlideAction) {
                     slideOutHorizontally(
                         targetOffsetX = { -it },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                        animationSpec = tween(
+                            300,
+                            easing = FastOutSlowInEasing
+                        )
                     )
                 } else {
                     ExitTransition.None
                 }
             }
         ) {
-
-            ReportScreen()
+            ReportScreen(
+                accessToken = accessToken,
+                onReportClick = { reportId ->
+                    selectedReportId = reportId
+                }
+            )
         }
 
         composable(
@@ -156,7 +187,10 @@ fun EcoTrackNavigation(
                 if (isSlideAction) {
                     slideInHorizontally(
                         initialOffsetX = { it },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                        animationSpec = tween(
+                            300,
+                            easing = FastOutSlowInEasing
+                        )
                     )
                 } else {
                     EnterTransition.None
@@ -166,14 +200,16 @@ fun EcoTrackNavigation(
                 if (isSlideAction) {
                     slideOutHorizontally(
                         targetOffsetX = { -it },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                        animationSpec = tween(
+                            300,
+                            easing = FastOutSlowInEasing
+                        )
                     )
                 } else {
                     ExitTransition.None
                 }
             }
         ) {
-
             GuideScreen()
         }
 
@@ -183,7 +219,10 @@ fun EcoTrackNavigation(
                 if (isSlideAction) {
                     slideInHorizontally(
                         initialOffsetX = { it },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                        animationSpec = tween(
+                            300,
+                            easing = FastOutSlowInEasing
+                        )
                     )
                 } else {
                     EnterTransition.None
@@ -193,19 +232,27 @@ fun EcoTrackNavigation(
                 if (isSlideAction) {
                     slideOutHorizontally(
                         targetOffsetX = { -it },
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                        animationSpec = tween(
+                            300,
+                            easing = FastOutSlowInEasing
+                        )
                     )
                 } else {
                     ExitTransition.None
                 }
             }
         ) {
-
             ProfileScreen(
+                accessToken = accessToken,
                 onNotificationsClick = {
                     isSlideAction = true
                     navController.navigate("notifications")
-                }
+                },
+                onViewSchedule = {
+                    navController.navigate("schedule")
+                },
+                onLogout = onLogout,
+                dashboardViewModel = dashboardViewModel
             )
         }
 
@@ -214,35 +261,121 @@ fun EcoTrackNavigation(
             enterTransition = {
                 slideInHorizontally(
                     initialOffsetX = { it },
-                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    animationSpec = tween(
+                        300,
+                        easing = FastOutSlowInEasing
+                    )
                 )
             },
             exitTransition = {
                 slideOutHorizontally(
-                    targetOffsetX = { it },
-                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    targetOffsetX = { -it },
+                    animationSpec = tween(
+                        300,
+                        easing = FastOutSlowInEasing
+                    )
                 )
             },
             popEnterTransition = {
                 slideInHorizontally(
                     initialOffsetX = { -it },
-                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    animationSpec = tween(
+                        300,
+                        easing = FastOutSlowInEasing
+                    )
                 )
             },
             popExitTransition = {
                 slideOutHorizontally(
                     targetOffsetX = { it },
-                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    animationSpec = tween(
+                        300,
+                        easing = FastOutSlowInEasing
+                    )
                 )
             }
         ) {
-
             NotificationScreen(
+                accessToken = accessToken,
                 onBackToHome = {
                     isSlideAction = false
-                    navController.navigate("home")
+                    navController.popBackStack()
+                },
+                onNotificationClick = { notificationInfo ->
+                    val destination = when {
+                        notificationInfo.contains(
+                            "collection reminder",
+                            ignoreCase = true
+                        ) ||
+                                notificationInfo.contains(
+                                    "collection schedule",
+                                    ignoreCase = true
+                                ) ||
+                                notificationInfo.contains(
+                                    "schedule",
+                                    ignoreCase = true
+                                ) -> "schedule"
+
+                        notificationInfo.contains(
+                            "report",
+                            ignoreCase = true
+                        ) ||
+                                notificationInfo.contains(
+                                    "resolved",
+                                    ignoreCase = true
+                                ) ||
+                                notificationInfo.contains(
+                                    "progress",
+                                    ignoreCase = true
+                                ) ||
+                                notificationInfo.contains(
+                                    "pending",
+                                    ignoreCase = true
+                                ) -> "report"
+
+                        notificationInfo.contains(
+                            "profile",
+                            ignoreCase = true
+                        ) ||
+                                notificationInfo.contains(
+                                    "account",
+                                    ignoreCase = true
+                                ) -> "profile"
+
+                        notificationInfo.contains(
+                            "waste guide",
+                            ignoreCase = true
+                        ) ||
+                                notificationInfo.contains(
+                                    "segregation",
+                                    ignoreCase = true
+                                ) ||
+                                notificationInfo.contains(
+                                    "guide",
+                                    ignoreCase = true
+                                ) -> "guide"
+
+                        else -> null
+                    }
+
+                    if (destination != null) {
+                        isSlideAction = true
+                        navController.navigate(destination) {
+                            launchSingleTop = true
+                        }
+                    }
                 }
             )
         }
+    }
+
+    selectedReportId?.let { reportId ->
+        ReportDetailsScreen(
+            accessToken = accessToken,
+            reportId = reportId,
+            onDismiss = {
+                selectedReportId = null
+            }
+        )
     }
 }

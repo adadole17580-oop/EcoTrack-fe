@@ -15,16 +15,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import edp.app.ecotrack.network.ApiClient
-import edp.app.ecotrack.screens.HomeScreen
+import edp.app.ecotrack.navigation.EcoTrackNavigation
+import androidx.navigation.NavHostController
+import edp.app.ecotrack.ResidentAppShell
 import edp.app.ecotrack.screens.auth.WelcomeScreen
 import edp.app.ecotrack.screens.auth.LoginScreen
 import edp.app.ecotrack.screens.auth.RegisterScreen
@@ -48,6 +49,10 @@ private object AuthRoutes {
 fun AuthNavigation() {
     val navController = rememberNavController()
     val coroutineScope = rememberCoroutineScope()
+
+    var residentAccessToken by rememberSaveable {
+        mutableStateOf("")
+    }
 
     var loginMessage by remember { mutableStateOf("") }
     var isLoggingIn by remember { mutableStateOf(false) }
@@ -108,11 +113,9 @@ fun AuthNavigation() {
                                     "Your account has an unrecognized role: $role"
                                 )
                             }
-            
+
                             if (role == "resident") {
-                                navController.currentBackStackEntry
-                                    ?.savedStateHandle
-                                    ?.set("resident_access_token", accessToken)
+                                residentAccessToken = accessToken
                             }
             
                             navController.navigate(destination) {
@@ -158,6 +161,7 @@ fun AuthNavigation() {
             )
         }
 
+
         composable(AuthRoutes.VERIFY_OTP) {
             val email = navController.previousBackStackEntry
                 ?.savedStateHandle
@@ -166,10 +170,16 @@ fun AuthNavigation() {
 
             VerifyOtpScreen(
                 email = email,
-                onBack = {
-                    navController.popBackStack()
-                },
-                onVerify = {
+                onBack = { navController.popBackStack() },
+                onVerify = { accessToken, refreshToken ->
+                    navController.currentBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("recovery_access_token", accessToken)
+
+                    navController.currentBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("recovery_refresh_token", refreshToken)
+
                     navController.navigate(AuthRoutes.RESET_PASSWORD)
                 },
                 onResendCode = {}
@@ -177,7 +187,13 @@ fun AuthNavigation() {
         }
 
         composable(AuthRoutes.RESET_PASSWORD) {
+            val accessToken = navController.previousBackStackEntry
+                ?.savedStateHandle
+                ?.get<String>("recovery_access_token")
+                .orEmpty()
+
             ResetPasswordScreen(
+                accessToken = accessToken,
                 onBackToLogin = {
                     navController.popBackStack(
                         AuthRoutes.LOGIN,
@@ -187,16 +203,14 @@ fun AuthNavigation() {
             )
         }
 
-        composable(AuthRoutes.HOME) { backStackEntry ->
-            val accessToken = backStackEntry.savedStateHandle
-                .get<String>("resident_access_token")
-                .orEmpty()
-
-            HomeScreen(
-                accessToken = accessToken,
+        composable(AuthRoutes.HOME) {
+            ResidentAppShell(
+                accessToken = residentAccessToken,
                 onLogout = {
+                    residentAccessToken = ""
+
                     navController.navigate(AuthRoutes.WELCOME) {
-                        popUpTo(0) {
+                        popUpTo(AuthRoutes.HOME) {
                             inclusive = true
                         }
                         launchSingleTop = true

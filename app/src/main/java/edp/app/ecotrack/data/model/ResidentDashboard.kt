@@ -1,3 +1,4 @@
+
 package edp.app.ecotrack.data.model
 
 data class ResidentDashboardResponse(
@@ -12,7 +13,8 @@ data class ResidentProfile(
     val email: String = "",
     val role: String = "",
     val phone: String = "",
-    val barangay: String = ""
+    val barangay: String = "",
+    val address: String = ""
 )
 
 data class ResidentDashboardData(

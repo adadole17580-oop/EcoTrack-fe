@@ -1,4 +1,5 @@
-package edp.app.ecotrack.screens
+
+package edp.app.ecotrack.screens.residents
 
 import android.content.Intent
 import android.net.Uri
@@ -7,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,7 +30,6 @@ import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -41,8 +42,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,10 +52,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import edp.app.ecotrack.network.ApiClient
 import edp.app.ecotrack.ui.theme.EcoDarkGreen
 import edp.app.ecotrack.ui.theme.EcoGreen
 import edp.app.ecotrack.ui.theme.EcoLightGreen
@@ -66,60 +69,75 @@ data class BarangayMessage(
     val isFromUser: Boolean
 )
 
+private data class BarangayContact(
+    val name: String = "Barangay Hall",
+    val address: String = "",
+    val phone: String = "",
+    val email: String = ""
+)
+
+private suspend fun loadBarangayContact(accessToken: String): BarangayContact {
+    val response = ApiClient.getResidentProfile(accessToken)
+    val barangay = response.optJSONObject("barangay")
+        ?: throw IllegalStateException("Barangay details are not available.")
+
+    fun field(name: String): String {
+        return barangay.optString(name, "")
+            .takeIf { it.isNotBlank() && it != "null" }
+            .orEmpty()
+    }
+
+    return BarangayContact(
+        name = field("barangay_name").ifBlank { "Barangay Hall" },
+        address = field("address"),
+        phone = field("phone_number"),
+        email = field("email")
+    )
+}
+
 @Composable
 fun ContactBarangayDialog(
+    accessToken: String,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val barangayPhoneNumber = "0888801234"
+    var contact by remember { mutableStateOf(BarangayContact()) }
+    var errorMessage by remember { mutableStateOf("") }
+
+    LaunchedEffect(accessToken) {
+        try {
+            contact = loadBarangayContact(accessToken)
+            errorMessage = ""
+        } catch (e: Exception) {
+            errorMessage = e.message ?: "Unable to load barangay contact details."
+        }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnClickOutside = true
-        )
+        properties = DialogProperties(dismissOnClickOutside = true)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    Color.White,
-                    RoundedCornerShape(18.dp)
-                )
+                .background(Color.White, RoundedCornerShape(18.dp))
                 .padding(22.dp)
         ) {
-
             Spacer(
                 modifier = Modifier
-                    .size(
-                        width = 44.dp,
-                        height = 4.dp
-                    )
-                    .background(
-                        EcoGreen,
-                        RoundedCornerShape(50)
-                    )
+                    .size(width = 44.dp, height = 4.dp)
+                    .background(EcoGreen, RoundedCornerShape(50))
             )
 
-            Spacer(
-                modifier = Modifier.height(20.dp)
-            )
+            Spacer(modifier = Modifier.height(20.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                Column(
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
                     modifier = Modifier
                         .size(44.dp)
-                        .background(
-                            EcoLightGreen,
-                            RoundedCornerShape(50)
-                        ),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                        .background(EcoLightGreen, CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
-
                     Icon(
                         imageVector = Icons.Default.Phone,
                         contentDescription = "Phone",
@@ -128,23 +146,16 @@ fun ContactBarangayDialog(
                     )
                 }
 
-                Spacer(
-                    modifier = Modifier.size(12.dp)
-                )
+                Spacer(modifier = Modifier.width(12.dp))
 
                 Column {
-
                     Text(
                         text = "Contact Barangay Hall",
                         color = EcoDarkGreen,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
-
-                    Spacer(
-                        modifier = Modifier.height(3.dp)
-                    )
-
+                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = "Get help with local services and community concerns.",
                         color = EcoTextGreen,
@@ -153,159 +164,110 @@ fun ContactBarangayDialog(
                 }
             }
 
-            Spacer(
-                modifier = Modifier.height(18.dp)
-            )
+            Spacer(modifier = Modifier.height(18.dp))
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        EcoLightGreen,
-                        RoundedCornerShape(12.dp)
-                    )
+                    .background(EcoLightGreen, RoundedCornerShape(12.dp))
                     .padding(16.dp)
             ) {
-
                 Text(
-                    text = "Barangay Bulua Hall",
+                    text = contact.name,
                     color = EcoDarkGreen,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(
-                    modifier = Modifier.height(8.dp)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                ContactDetailRow(
+                    icon = {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = "Location",
+                            tint = EcoGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    text = contact.address.ifBlank { "Address unavailable" }
                 )
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Spacer(modifier = Modifier.height(6.dp))
 
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = "Location",
-                        tint = EcoGreen,
-                        modifier = Modifier.size(16.dp)
-                    )
-
-                    Spacer(
-                        modifier = Modifier.width(6.dp)
-                    )
-
-                    Text(
-                        text = "Zone 7, Bulua, Cagayan de Oro City",
-                        color = EcoTextGreen,
-                        fontSize = 11.sp
-                    )
-                }
-
-                Spacer(
-                    modifier = Modifier.height(6.dp)
+                ContactDetailRow(
+                    icon = {
+                        Icon(
+                            Icons.Default.Call,
+                            contentDescription = "Phone",
+                            tint = EcoGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    text = contact.phone.ifBlank { "Phone number unavailable" }
                 )
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Spacer(modifier = Modifier.height(6.dp))
 
-                    Icon(
-                        imageVector = Icons.Default.Call,
-                        contentDescription = "Phone",
-                        tint = EcoGreen,
-                        modifier = Modifier.size(16.dp)
-                    )
-
-                    Spacer(
-                        modifier = Modifier.width(6.dp)
-                    )
-
-                    Text(
-                        text = "(088) 880 1234",
-                        color = EcoDarkGreen,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(
-                    modifier = Modifier.height(6.dp)
+                Text(
+                    text = "Email: ${contact.email.ifBlank { "Unavailable" }}",
+                    color = EcoTextGreen,
+                    fontSize = 11.sp
                 )
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    Icon(
-                        imageVector = Icons.Default.Schedule,
-                        contentDescription = "Hours",
-                        tint = EcoGreen,
-                        modifier = Modifier.size(16.dp)
-                    )
-
-                    Spacer(
-                        modifier = Modifier.width(6.dp)
-                    )
-
+                if (errorMessage.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Mon - Fri, 8:00 AM - 5:00 PM",
-                        color = EcoTextGreen,
+                        text = errorMessage,
+                        color = Color(0xFFB3261E),
                         fontSize = 11.sp
                     )
                 }
             }
 
-            Spacer(
-                modifier = Modifier.height(20.dp)
-            )
+            Spacer(modifier = Modifier.height(20.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-
                 Button(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(
+                    colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White,
                         contentColor = EcoDarkGreen
                     ),
                     shape = RoundedCornerShape(9.dp)
                 ) {
-
-                    Text(
-                        text = "Close"
-                    )
+                    Text("Close")
                 }
 
                 Button(
                     onClick = {
-                        val intent = Intent(
-                            Intent.ACTION_DIAL,
-                            Uri.parse("tel:$barangayPhoneNumber")
-                        )
-                        context.startActivity(intent)
+                        if (contact.phone.isNotBlank()) {
+                            context.startActivity(
+                                Intent(
+                                    Intent.ACTION_DIAL,
+                                    Uri.parse("tel:${contact.phone}")
+                                )
+                            )
+                        }
                     },
+                    enabled = contact.phone.isNotBlank(),
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = EcoDarkGreen
                     ),
                     shape = RoundedCornerShape(9.dp)
                 ) {
-
                     Icon(
                         imageVector = Icons.Default.Call,
                         contentDescription = "Call",
                         modifier = Modifier.size(16.dp)
                     )
-
-                    Spacer(
-                        modifier = Modifier.width(6.dp)
-                    )
-
-                    Text(
-                        text = "Call Now"
-                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Call Now")
                 }
             }
         }
@@ -314,32 +276,28 @@ fun ContactBarangayDialog(
 
 @Composable
 fun ContactBarangayScreen(
+    accessToken: String,
     onBack: () -> Unit
 ) {
-
     val context = LocalContext.current
-
-
-    val barangayPhoneNumber = "0888801234"
-
-    var messageText by remember {
-        mutableStateOf("")
-    }
-
-
-    val messages = remember {
-        mutableStateListOf<BarangayMessage>()
-    }
-
+    var contact by remember { mutableStateOf(BarangayContact()) }
+    var errorMessage by remember { mutableStateOf("") }
+    var messageText by remember { mutableStateOf("") }
+    val messages = remember { mutableStateListOf<BarangayMessage>() }
     val listState = rememberLazyListState()
 
+    LaunchedEffect(accessToken) {
+        try {
+            contact = loadBarangayContact(accessToken)
+            errorMessage = ""
+        } catch (e: Exception) {
+            errorMessage = e.message ?: "Unable to load barangay contact details."
+        }
+    }
+
     LaunchedEffect(messages.size) {
-
         if (messages.isNotEmpty()) {
-
-            listState.animateScrollToItem(
-                messages.size - 1
-            )
+            listState.animateScrollToItem(messages.size)
         }
     }
 
@@ -349,24 +307,16 @@ fun ContactBarangayScreen(
             .background(EcoLightGreen)
             .imePadding()
     ) {
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(EcoDarkGreen)
-                .padding(
-                    horizontal = 10.dp,
-                    vertical = 10.dp
-                ),
+                .padding(horizontal = 10.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
-            IconButton(
-                onClick = onBack
-            ) {
-
+            IconButton(onClick = onBack) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    Icons.Default.ArrowBack,
                     contentDescription = "Back",
                     tint = Color.White,
                     modifier = Modifier.size(25.dp)
@@ -380,88 +330,53 @@ fun ContactBarangayScreen(
                     .background(Color.White),
                 contentAlignment = Alignment.Center
             ) {
-
                 Text(
-                    text = "BB",
+                    text = contact.name.take(2).uppercase(),
                     color = EcoDarkGreen,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
 
+            Spacer(modifier = Modifier.width(11.dp))
 
-            Spacer(
-                modifier = Modifier.width(11.dp)
-            )
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Barangay Bulua Hall",
+                    text = contact.name,
                     color = Color.White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
-
-                Spacer(
-                    modifier = Modifier.height(2.dp)
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Barangay contact",
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 11.sp
                 )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    Box(
-                        modifier = Modifier
-                            .size(7.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF7BE495))
-                    )
-
-                    Spacer(
-                        modifier = Modifier.width(5.dp)
-                    )
-
-                    Text(
-                        text = "Online",
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontSize = 11.sp
-                    )
-                }
             }
 
             IconButton(
+                enabled = contact.phone.isNotBlank(),
                 onClick = {
-
-                    val intent = Intent(
-                        Intent.ACTION_DIAL,
-                        Uri.parse(
-                            "tel:$barangayPhoneNumber"
+                    context.startActivity(
+                        Intent(
+                            Intent.ACTION_DIAL,
+                            Uri.parse("tel:${contact.phone}")
                         )
                     )
-
-                    context.startActivity(intent)
                 }
             ) {
-
                 Icon(
-                    imageVector = Icons.Default.Call,
+                    Icons.Default.Call,
                     contentDescription = "Call Barangay Hall",
                     tint = Color.White,
                     modifier = Modifier.size(23.dp)
                 )
             }
 
-            IconButton(
-                onClick = {
-
-                }
-            ) {
-
+            IconButton(onClick = {}) {
                 Icon(
-                    imageVector = Icons.Default.MoreVert,
+                    Icons.Default.MoreVert,
                     contentDescription = "More options",
                     tint = Color.White
                 )
@@ -471,87 +386,67 @@ fun ContactBarangayScreen(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(
-                    start = 16.dp,
-                    top = 14.dp,
-                    end = 16.dp
-                ),
+                .padding(start = 16.dp, top = 14.dp, end = 16.dp),
             shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            ),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = 1.dp
-            )
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-
-            Column(
-                modifier = Modifier.padding(14.dp)
-            ) {
-
+            Column(modifier = Modifier.padding(14.dp)) {
                 Text(
-                    text = "Barangay Bulua Hall",
+                    text = contact.name,
                     color = EcoDarkGreen,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(
-                    modifier = Modifier.height(6.dp)
+                Spacer(modifier = Modifier.height(6.dp))
+
+                ContactDetailRow(
+                    icon = {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = "Location",
+                            tint = EcoGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    text = contact.address.ifBlank { "Address unavailable" }
                 )
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Spacer(modifier = Modifier.height(5.dp))
 
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = "Location",
-                        tint = EcoGreen,
-                        modifier = Modifier.size(16.dp)
-                    )
-
-                    Spacer(
-                        modifier = Modifier.width(5.dp)
-                    )
-
-                    Text(
-                        text = "Zone 7, Bulua, Cagayan de Oro City",
-                        color = EcoTextGreen,
-                        fontSize = 10.sp
-                    )
-                }
-
-                Spacer(
-                    modifier = Modifier.height(5.dp)
+                ContactDetailRow(
+                    icon = {
+                        Icon(
+                            Icons.Default.Call,
+                            contentDescription = "Phone",
+                            tint = EcoGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    },
+                    text = contact.phone.ifBlank { "Phone number unavailable" }
                 )
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Spacer(modifier = Modifier.height(5.dp))
 
-                    Icon(
-                        imageVector = Icons.Default.Call,
-                        contentDescription = "Phone",
-                        tint = EcoGreen,
-                        modifier = Modifier.size(16.dp)
-                    )
+                Text(
+                    text = "Email: ${contact.email.ifBlank { "Unavailable" }}",
+                    color = EcoTextGreen,
+                    fontSize = 10.sp
+                )
 
-                    Spacer(
-                        modifier = Modifier.width(5.dp)
-                    )
-
+                if (errorMessage.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "(088) 880 1234",
-                        color = EcoTextGreen,
-                        fontSize = 10.sp
+                        text = errorMessage,
+                        color = Color(0xFFB3261E),
+                        fontSize = 11.sp
                     )
                 }
             }
         }
 
         if (messages.isEmpty()) {
-
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -559,12 +454,10 @@ fun ContactBarangayScreen(
                     .padding(24.dp),
                 contentAlignment = Alignment.Center
             ) {
-
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-
                     Box(
                         modifier = Modifier
                             .size(64.dp)
@@ -572,18 +465,15 @@ fun ContactBarangayScreen(
                             .background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
-
                         Icon(
-                            imageVector = Icons.Default.ChatBubbleOutline,
+                            Icons.Default.ChatBubbleOutline,
                             contentDescription = "No messages",
                             tint = EcoGreen,
                             modifier = Modifier.size(32.dp)
                         )
                     }
 
-                    Spacer(
-                        modifier = Modifier.height(16.dp)
-                    )
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
                         text = "No conversations yet",
@@ -592,43 +482,32 @@ fun ContactBarangayScreen(
                         fontWeight = FontWeight.Bold
                     )
 
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
-                    )
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = "Send a message to Barangay Bulua Hall to report concerns or ask about local services.",
+                        text = "Send a message to the barangay about local services or concerns.",
                         color = EcoTextGreen,
                         fontSize = 12.sp,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        textAlign = TextAlign.Center,
                         lineHeight = 16.sp
                     )
                 }
             }
         } else {
-
             LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(
-                        horizontal = 12.dp
-                    ),
+                    .padding(horizontal = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(9.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    top = 14.dp,
-                    bottom = 12.dp
-                )
+                contentPadding = PaddingValues(top = 14.dp, bottom = 12.dp)
             ) {
-
                 item {
-
                     Box(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
-
                         Text(
                             text = "Today",
                             color = EcoTextGreen,
@@ -639,10 +518,7 @@ fun ContactBarangayScreen(
                 }
 
                 items(messages) { message ->
-
-                    MessageBubble(
-                        message = message
-                    )
+                    MessageBubble(message)
                 }
             }
         }
@@ -651,18 +527,12 @@ fun ContactBarangayScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.White)
-                .padding(
-                    horizontal = 10.dp,
-                    vertical = 8.dp
-                ),
+                .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.Bottom
         ) {
-
             OutlinedTextField(
                 value = messageText,
-                onValueChange = {
-                    messageText = it
-                },
+                onValueChange = { messageText = it },
                 modifier = Modifier.weight(1f),
                 placeholder = {
                     Text(
@@ -675,37 +545,21 @@ fun ContactBarangayScreen(
                 singleLine = true
             )
 
-
-            Spacer(
-                modifier = Modifier.width(7.dp)
-            )
+            Spacer(modifier = Modifier.width(7.dp))
 
             Box(
                 modifier = Modifier
                     .size(50.dp)
                     .clip(CircleShape)
                     .background(
-                        if (messageText.isNotBlank()) {
-                            EcoGreen
-                        } else {
-                            Color(0xFFB7C8BC)
-                        }
-                    )
-                    .then(
-                        if (messageText.isNotBlank()) {
-                            Modifier
-                        } else {
-                            Modifier
-                        }
+                        if (messageText.isNotBlank()) EcoGreen
+                        else Color(0xFFB7C8BC)
                     ),
                 contentAlignment = Alignment.Center
             ) {
-
                 IconButton(
                     onClick = {
-
                         if (messageText.isNotBlank()) {
-
                             messages.add(
                                 BarangayMessage(
                                     text = messageText.trim(),
@@ -713,15 +567,13 @@ fun ContactBarangayScreen(
                                     isFromUser = true
                                 )
                             )
-
                             messageText = ""
                         }
                     },
                     enabled = messageText.isNotBlank()
                 ) {
-
                     Icon(
-                        imageVector = Icons.Default.Send,
+                        Icons.Default.Send,
                         contentDescription = "Send message",
                         tint = Color.White,
                         modifier = Modifier.size(21.dp)
@@ -731,10 +583,31 @@ fun ContactBarangayScreen(
         }
     }
 }
+
 @Composable
-private fun MessageBubble(
-    message: BarangayMessage
+private fun ContactDetailRow(
+    icon: @Composable () -> Unit,
+    text: String
 ) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        icon()
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = text,
+            color = EcoTextGreen,
+            fontSize = 11.sp
+        )
+    }
+}
+
+@Composable
+private fun MessageBubble(message: BarangayMessage) {
+    val shape = RoundedCornerShape(
+        topStart = 16.dp,
+        topEnd = 16.dp,
+        bottomStart = if (message.isFromUser) 16.dp else 4.dp,
+        bottomEnd = if (message.isFromUser) 4.dp else 16.dp
+    )
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -744,71 +617,25 @@ private fun MessageBubble(
             Arrangement.Start
         }
     ) {
-
         Column(
             modifier = Modifier
-                .fillMaxWidth(
-                    if (message.isFromUser) {
-                        0.78f
-                    } else {
-                        0.80f
-                    }
-                )
-                .clip(
-                    RoundedCornerShape(
-                        topStart = 16.dp,
-                        topEnd = 16.dp,
-                        bottomStart = if (message.isFromUser) {
-                            16.dp
-                        } else {
-                            4.dp
-                        },
-                        bottomEnd = if (message.isFromUser) {
-                            4.dp
-                        } else {
-                            16.dp
-                        }
-                    )
-                )
+                .fillMaxWidth(if (message.isFromUser) 0.78f else 0.80f)
+                .clip(shape)
                 .background(
-                    if (message.isFromUser) {
-                        Color(0xFFE0F0E2)
-                    } else {
-                        Color.White
-                    }
+                    if (message.isFromUser) Color(0xFFE0F0E2)
+                    else Color.White
                 )
                 .border(
-                    width = if (message.isFromUser) {
-                        0.dp
-                    } else {
-                        1.dp
-                    },
+                    width = if (message.isFromUser) 0.dp else 1.dp,
                     color = if (message.isFromUser) {
                         Color.Transparent
                     } else {
                         Color(0xFFD8E4DA)
                     },
-                    shape = RoundedCornerShape(
-                        topStart = 16.dp,
-                        topEnd = 16.dp,
-                        bottomStart = if (message.isFromUser) {
-                            16.dp
-                        } else {
-                            4.dp
-                        },
-                        bottomEnd = if (message.isFromUser) {
-                            4.dp
-                        } else {
-                            16.dp
-                        }
-                    )
+                    shape = shape
                 )
-                .padding(
-                    horizontal = 13.dp,
-                    vertical = 10.dp
-                )
+                .padding(horizontal = 13.dp, vertical = 10.dp)
         ) {
-
             Text(
                 text = message.text,
                 color = Color(0xFF25352A),
@@ -816,9 +643,7 @@ private fun MessageBubble(
                 lineHeight = 18.sp
             )
 
-            Spacer(
-                modifier = Modifier.height(5.dp)
-            )
+            Spacer(modifier = Modifier.height(5.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -829,7 +654,6 @@ private fun MessageBubble(
                 },
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Text(
                     text = message.time,
                     color = EcoTextGreen,
@@ -837,11 +661,7 @@ private fun MessageBubble(
                 )
 
                 if (message.isFromUser) {
-
-                    Spacer(
-                        modifier = Modifier.width(5.dp)
-                    )
-
+                    Spacer(modifier = Modifier.width(5.dp))
                     Text(
                         text = "✓✓",
                         color = EcoGreen,

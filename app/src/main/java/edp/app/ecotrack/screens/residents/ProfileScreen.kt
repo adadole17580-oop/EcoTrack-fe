@@ -1,4 +1,5 @@
-package edp.app.ecotrack.screens
+
+package edp.app.ecotrack.screens.residents
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -32,11 +33,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,57 +49,109 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import edp.app.ecotrack.network.ApiClient
 import edp.app.ecotrack.ui.theme.EcoDarkGreen
 import edp.app.ecotrack.ui.theme.EcoGreen
 import edp.app.ecotrack.ui.theme.EcoLightGreen
-import edp.app.ecotrack.ui.theme.EcoSubmitGreen
 import edp.app.ecotrack.ui.theme.EcoTextGreen
+import edp.app.ecotrack.viewmodel.ResidentDashboardViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
-    onNotificationsClick: () -> Unit = {}
+    accessToken: String,
+    onNotificationsClick: () -> Unit = {},
+    onViewSchedule: () -> Unit = {},
+    onLogout: () -> Unit = {},
+    dashboardViewModel: ResidentDashboardViewModel
 ) {
+    var showChangePassword by remember { mutableStateOf(false) }
+    var showContactBarangay by remember { mutableStateOf(false) }
+    var showMyBarangay by remember { mutableStateOf(false) }
+    var showDeleteAccount by remember { mutableStateOf(false) }
+    var showLogout by remember { mutableStateOf(false) }
+    var showEditProfile by remember { mutableStateOf(false) }
 
-    var showChangePassword by remember {
-        mutableStateOf(false)
+    var fullName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var mobileNumber by remember { mutableStateOf("") }
+    var homeAddress by remember { mutableStateOf("") }
+    var barangayId by remember { mutableStateOf(0) }
+    var barangayName by remember { mutableStateOf("") }
+
+    var barangayOptions by remember {
+        mutableStateOf<List<Pair<Int, String>>>(emptyList())
     }
 
-    var showContactBarangay by remember {
-        mutableStateOf(false)
-    }
+    var isLoadingProfile by remember { mutableStateOf(true) }
+    var isSavingProfile by remember { mutableStateOf(false) }
+    var isDeletingAccount by remember { mutableStateOf(false) }
+    var profileError by remember { mutableStateOf("") }
+    var profileMessage by remember { mutableStateOf("") }
 
-    var showMyBarangay by remember {
-        mutableStateOf(false)
-    }
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    var showDeleteAccount by remember {
-        mutableStateOf(false)
-    }
+    LaunchedEffect(accessToken) {
+        isLoadingProfile = true
+        profileError = ""
 
-    var showLogout by remember {
-        mutableStateOf(false)
-    }
+        try {
+            val result = ApiClient.getResidentProfile(accessToken)
+            val user = result.getJSONObject("user")
+            val barangay = result.optJSONObject("barangay")
 
-    var showEditProfile by remember {
-        mutableStateOf(false)
-    }
+            fullName = user.optString("full_name")
+                .takeUnless { it == "null" }
+                .orEmpty()
 
-    var fullName by remember {
-        mutableStateOf("Shania Castro")
-    }
+            email = user.optString("email")
+                .takeUnless { it == "null" }
+                .orEmpty()
 
-    var email by remember {
-        mutableStateOf("shaniacastro@gmail.com")
-    }
+            mobileNumber = user.optString("contact_number")
+                .takeUnless { it == "null" }
+                .orEmpty()
 
-    var mobileNumber by remember {
-        mutableStateOf("0917 814 2210")
-    }
+            homeAddress = user.optString("address")
+                .takeUnless { it == "null" }
+                .orEmpty()
 
-    var homeAddress by remember {
-        mutableStateOf("Zone 10, Barangay Bulua")
+            barangayId = user.optInt("barangay_id", 0)
+
+            barangayName = barangay
+                ?.optString("barangay_name")
+                ?.takeUnless { it == "null" }
+                .orEmpty()
+        } catch (error: Exception) {
+            profileError = error.message ?: "Unable to load your profile."
+        } finally {
+            isLoadingProfile = false
+        }
+
+        try {
+            val result = ApiClient.getResidentBarangays(accessToken)
+            val barangays = result.getJSONArray("barangays")
+
+            barangayOptions = buildList {
+                for (index in 0 until barangays.length()) {
+                    val item = barangays.getJSONObject(index)
+                    val id = item.optInt("barangay_id")
+                    val name = item.optString("barangay_name")
+
+                    if (id > 0 && name.isNotBlank() && name != "null") {
+                        add(id to name)
+                    }
+                }
+            }
+        } catch (error: Exception) {
+            if (profileError.isBlank()) {
+                profileError = error.message ?: "Unable to load barangays."
+            }
+        }
     }
 
     Column(
@@ -102,7 +159,6 @@ fun ProfileScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -115,20 +171,16 @@ fun ProfileScreen(
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-
                 Text(
                     text = "My Profile",
                     color = Color.White,
                     style = MaterialTheme.typography.headlineMedium
                 )
 
-                Spacer(
-                    modifier = Modifier.height(4.dp)
-                )
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = "Manage your resident information and account settings",
@@ -138,10 +190,7 @@ fun ProfileScreen(
             }
 
             Box {
-
-                IconButton(
-                    onClick = onNotificationsClick
-                ) {
+                IconButton(onClick = onNotificationsClick) {
                     Icon(
                         imageVector = Icons.Default.NotificationsNone,
                         contentDescription = "Notifications",
@@ -163,9 +212,7 @@ fun ProfileScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(
-                    rememberScrollState()
-                )
+                .verticalScroll(rememberScrollState())
                 .padding(
                     start = 20.dp,
                     top = 20.dp,
@@ -173,6 +220,29 @@ fun ProfileScreen(
                     bottom = 30.dp
                 )
         ) {
+            if (isLoadingProfile) {
+                Text(
+                    text = "Loading your profile...",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    color = EcoTextGreen,
+                    textAlign = TextAlign.Center,
+                    fontSize = 13.sp
+                )
+            }
+
+            if (profileError.isNotBlank()) {
+                Text(
+                    text = profileError,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    fontSize = 13.sp
+                )
+            }
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -184,18 +254,15 @@ fun ProfileScreen(
                     defaultElevation = 2.dp
                 )
             ) {
-
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-
                         Box(
                             modifier = Modifier
                                 .size(56.dp)
@@ -203,7 +270,6 @@ fun ProfileScreen(
                                 .background(Color(0xFFE8F5E9)),
                             contentAlignment = Alignment.Center
                         ) {
-
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = "Profile",
@@ -212,24 +278,21 @@ fun ProfileScreen(
                             )
                         }
 
-                        Spacer(
-                            modifier = Modifier.size(12.dp)
-                        )
+                        Spacer(modifier = Modifier.size(12.dp))
 
                         Column(
                             modifier = Modifier.weight(1f)
                         ) {
-
                             Text(
-                                text = fullName,
+                                text = fullName.ifBlank {
+                                    if (isLoadingProfile) "Loading..." else "Resident"
+                                },
                                 color = EcoDarkGreen,
                                 fontSize = 17.sp,
                                 fontWeight = FontWeight.Bold
                             )
 
-                            Spacer(
-                                modifier = Modifier.height(2.dp)
-                            )
+                            Spacer(modifier = Modifier.height(2.dp))
 
                             Text(
                                 text = "Resident",
@@ -238,37 +301,36 @@ fun ProfileScreen(
                                 fontWeight = FontWeight.Medium
                             )
 
-                            Spacer(
-                                modifier = Modifier.height(2.dp)
-                            )
+                            Spacer(modifier = Modifier.height(2.dp))
 
                             Text(
-                                text = "Barangay Bulua",
+                                text = barangayName.ifBlank {
+                                    if (isLoadingProfile) {
+                                        "Loading barangay..."
+                                    } else {
+                                        "No barangay assigned"
+                                    }
+                                },
                                 color = EcoTextGreen,
                                 fontSize = 11.sp
                             )
                         }
                     }
 
-                    Spacer(
-                        modifier = Modifier.height(13.dp)
-                    )
+                    Spacer(modifier = Modifier.height(13.dp))
 
                     OutlinedButton(
                         onClick = {
+                            profileMessage = ""
                             showEditProfile = true
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(9.dp),
-                        border = BorderStroke(
-                            width = 1.dp,
-                            color = EcoGreen
-                        ),
+                        border = BorderStroke(1.dp, EcoGreen),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = EcoDarkGreen
                         )
                     ) {
-
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = "Edit Profile",
@@ -276,9 +338,7 @@ fun ProfileScreen(
                             modifier = Modifier.size(17.dp)
                         )
 
-                        Spacer(
-                            modifier = Modifier.size(7.dp)
-                        )
+                        Spacer(modifier = Modifier.size(7.dp))
 
                         Text(
                             text = "Edit Profile",
@@ -288,11 +348,7 @@ fun ProfileScreen(
                 }
             }
 
-
-            Spacer(
-                modifier = Modifier.height(22.dp)
-            )
-
+            Spacer(modifier = Modifier.height(22.dp))
 
             Text(
                 text = "Account",
@@ -301,9 +357,7 @@ fun ProfileScreen(
                 fontWeight = FontWeight.Bold
             )
 
-            Spacer(
-                modifier = Modifier.height(10.dp)
-            )
+            Spacer(modifier = Modifier.height(10.dp))
 
             ProfileOptionCard(
                 icon = Icons.Default.Lock,
@@ -316,10 +370,7 @@ fun ProfileScreen(
                 }
             )
 
-
-            Spacer(
-                modifier = Modifier.height(12.dp)
-            )
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 text = "Community",
@@ -328,9 +379,7 @@ fun ProfileScreen(
                 fontWeight = FontWeight.Bold
             )
 
-            Spacer(
-                modifier = Modifier.height(10.dp)
-            )
+            Spacer(modifier = Modifier.height(10.dp))
 
             ProfileOptionCard(
                 icon = Icons.Default.Phone,
@@ -343,10 +392,7 @@ fun ProfileScreen(
                 }
             )
 
-
-            Spacer(
-                modifier = Modifier.height(12.dp)
-            )
+            Spacer(modifier = Modifier.height(12.dp))
 
             ProfileOptionCard(
                 icon = Icons.Default.LocationOn,
@@ -359,10 +405,7 @@ fun ProfileScreen(
                 }
             )
 
-
-            Spacer(
-                modifier = Modifier.height(22.dp)
-            )
+            Spacer(modifier = Modifier.height(22.dp))
 
             Text(
                 text = "Session",
@@ -371,9 +414,7 @@ fun ProfileScreen(
                 fontWeight = FontWeight.Bold
             )
 
-            Spacer(
-                modifier = Modifier.height(10.dp)
-            )
+            Spacer(modifier = Modifier.height(10.dp))
 
             ProfileOptionCard(
                 icon = Icons.Default.Logout,
@@ -386,10 +427,7 @@ fun ProfileScreen(
                 }
             )
 
-
-            Spacer(
-                modifier = Modifier.height(14.dp)
-            )
+            Spacer(modifier = Modifier.height(14.dp))
 
             ProfileOptionCard(
                 icon = Icons.Default.Person,
@@ -404,102 +442,191 @@ fun ProfileScreen(
                 }
             )
 
-
-            Spacer(
-                modifier = Modifier.height(20.dp)
-            )
+            Spacer(modifier = Modifier.height(20.dp))
 
             Text(
                 text = "EcoTrack",
                 modifier = Modifier.fillMaxWidth(),
                 color = EcoTextGreen,
                 fontSize = 11.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = TextAlign.Center
             )
 
-            Spacer(
-                modifier = Modifier.height(3.dp)
-            )
+            Spacer(modifier = Modifier.height(3.dp))
 
             Text(
                 text = "Community waste reporting and environmental services",
                 modifier = Modifier.fillMaxWidth(),
                 color = EcoTextGreen,
                 fontSize = 9.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = TextAlign.Center
             )
         }
+    }
 
-        if (showEditProfile) {
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier.padding(16.dp)
+    )
 
-            EditProfileDialog(
-                onDismiss = {
+    if (showEditProfile) {
+        EditProfileDialog(
+            fullName = fullName,
+            email = email,
+            mobile = mobileNumber,
+            address = homeAddress,
+            currentBarangayId = barangayId,
+            barangays = barangayOptions,
+            isSaving = isSavingProfile,
+            message = profileMessage,
+            onDismiss = {
+                if (!isSavingProfile) {
                     showEditProfile = false
-                },
-                onSave = { newName, newEmail, newMobile, newAddress ->
-
-                    fullName = newName
-                    email = newEmail
-                    mobileNumber = newMobile
-                    homeAddress = newAddress
-
-                    showEditProfile = false
                 }
-            )
-        }
+            },
+            onSave = { newName, newMobile, newAddress, newBarangayId ->
+                coroutineScope.launch {
+                    isSavingProfile = true
+                    profileMessage = ""
 
-        if (showChangePassword) {
+                    try {
+                        val result = ApiClient.updateResidentProfile(
+                            accessToken = accessToken,
+                            fullName = newName,
+                            contactNumber = newMobile,
+                            address = newAddress,
+                            barangayId = newBarangayId
+                        )
 
-            ChangePasswordDialog(
-                onDismiss = {
-                    showChangePassword = false
+                        val updatedUser = result.optJSONObject("user")
+                        val updatedBarangay = result.optJSONObject("barangay")
+
+                        fullName = updatedUser
+                            ?.optString("full_name")
+                            ?.takeUnless { it == "null" }
+                            ?: newName.trim()
+
+                        mobileNumber = updatedUser
+                            ?.optString("contact_number")
+                            ?.takeUnless { it == "null" }
+                            ?: newMobile.trim()
+
+                        homeAddress = updatedUser
+                            ?.optString("address")
+                            ?.takeUnless { it == "null" }
+                            ?: newAddress.trim()
+
+                        barangayId = updatedUser
+                            ?.optInt("barangay_id", newBarangayId)
+                            ?: newBarangayId
+
+                        barangayName = updatedBarangay
+                            ?.optString("barangay_name")
+                            ?.takeUnless { it == "null" }
+                            ?: barangayOptions.firstOrNull {
+                                it.first == newBarangayId
+                            }?.second.orEmpty()
+
+                        dashboardViewModel.updateResidentProfile(
+                            fullName = fullName,
+                            phone = mobileNumber,
+                            address = homeAddress,
+                            barangay = barangayName
+                        )
+
+                        showEditProfile = false
+                        snackbarHostState.showSnackbar(
+                            "Profile updated successfully."
+                        )
+                    } catch (error: Exception) {
+                        profileMessage = error.message
+                            ?: "Unable to update your profile."
+                    } finally {
+                        isSavingProfile = false
+                    }
                 }
-            )
-        }
+            }
+        )
+    }
 
-        if (showContactBarangay) {
+    if (showChangePassword) {
+        ChangePasswordDialog(
+            accessToken = accessToken,
+            onDismiss = {
+                showChangePassword = false
+            }
+        )
+    }
 
-            ContactBarangayDialog(
-                onDismiss = {
-                    showContactBarangay = false
-                }
-            )
-        }
+    if (showContactBarangay) {
+        ContactBarangayDialog(
+            accessToken = accessToken,
+            onDismiss = {
+                showContactBarangay = false
+            }
+        )
+    }
 
-        if (showMyBarangay) {
+    if (showMyBarangay) {
+        MyBarangayDialog(
+            accessToken = accessToken,
+            onDismiss = {
+                showMyBarangay = false
+            },
+            onViewSchedule = {
+                showMyBarangay = false
+                onViewSchedule()
+            }
+        )
+    }
 
-            MyBarangayDialog(
-                onDismiss = {
-                    showMyBarangay = false
-                }
-            )
-        }
+    if (showLogout) {
+        LogoutDialog(
+            residentName = fullName.ifBlank { "Resident" },
+            residentEmail = email,
+            onDismiss = {
+                showLogout = false
+            },
+            onLogout = {
+                showLogout = false
+                onLogout()
+            }
+        )
+    }
 
-        if (showLogout) {
-
-            LogoutDialog(
-                onDismiss = {
-                    showLogout = false
-                },
-                onLogout = {
-
-                    showLogout = false
-                }
-            )
-        }
-
-        if (showDeleteAccount) {
-
-            DeleteAccountDialog(
-                onDismiss = {
+    if (showDeleteAccount) {
+        DeleteAccountDialog(
+            onDismiss = {
+                if (!isDeletingAccount) {
                     showDeleteAccount = false
-                },
-                onDelete = {
-
-                    showDeleteAccount = false
                 }
-            )
-        }
+            },
+            onDelete = {
+                if (!isDeletingAccount) {
+                    coroutineScope.launch {
+                        if (isDeletingAccount) {
+                            return@launch
+                        }
+
+                        isDeletingAccount = true
+
+                        try {
+                            ApiClient.deleteResidentAccount(accessToken)
+                            showDeleteAccount = false
+                            onLogout()
+                        } catch (exception: Exception) {
+                            snackbarHostState.showSnackbar(
+                                exception.message
+                                    ?: "Unable to delete your account. Please try again."
+                            )
+                        } finally {
+                            isDeletingAccount = false
+                        }
+                    }
+                }
+            },
+            isDeleting = isDeletingAccount
+        )
     }
 }
 
@@ -514,7 +641,6 @@ private fun ProfileOptionCard(
     arrowTint: Color = EcoTextGreen,
     onClick: () -> Unit
 ) {
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -529,14 +655,12 @@ private fun ProfileOptionCard(
             defaultElevation = 1.dp
         )
     ) {
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(15.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -544,7 +668,6 @@ private fun ProfileOptionCard(
                     .background(iconBgColor),
                 contentAlignment = Alignment.Center
             ) {
-
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
@@ -553,14 +676,11 @@ private fun ProfileOptionCard(
                 )
             }
 
-            Spacer(
-                modifier = Modifier.size(13.dp)
-            )
+            Spacer(modifier = Modifier.size(13.dp))
 
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-
                 Text(
                     text = title,
                     color = titleColor,
@@ -568,9 +688,7 @@ private fun ProfileOptionCard(
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(
-                    modifier = Modifier.height(3.dp)
-                )
+                Spacer(modifier = Modifier.height(3.dp))
 
                 Text(
                     text = description,
@@ -580,9 +698,7 @@ private fun ProfileOptionCard(
                 )
             }
 
-            Spacer(
-                modifier = Modifier.size(8.dp)
-            )
+            Spacer(modifier = Modifier.size(8.dp))
 
             Icon(
                 imageVector = Icons.Default.ArrowForwardIos,

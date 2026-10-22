@@ -1,4 +1,4 @@
-package edp.app.ecotrack.components
+package edp.app.ecotrack.components.residents
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth

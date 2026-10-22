@@ -1,4 +1,4 @@
-package edp.app.ecotrack.components
+package edp.app.ecotrack.components.residents
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
