@@ -1,3 +1,4 @@
+
 package edp.app.ecotrack.components.auth
 
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import edp.app.ecotrack.ui.theme.EcoBorderGreen
 import edp.app.ecotrack.ui.theme.EcoGreen
 import edp.app.ecotrack.ui.theme.EcoWhite
 
+
 @Composable
 fun AuthTextField(
     label: String,
@@ -40,7 +42,9 @@ fun AuthTextField(
         mutableStateOf(false)
     }
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier.fillMaxWidth()
+    ) {
         Text(
             text = label.uppercase(),
             fontSize = 11.sp,
@@ -60,6 +64,8 @@ fun AuthTextField(
                 )
             },
             singleLine = true,
+            enabled = true,
+            readOnly = false,
             shape = RoundedCornerShape(7.dp),
             keyboardOptions = KeyboardOptions(
                 keyboardType = if (isPassword) {
@@ -95,6 +101,7 @@ fun AuthTextField(
                 unfocusedBorderColor = EcoBorderGreen,
                 focusedContainerColor = EcoWhite,
                 unfocusedContainerColor = EcoWhite,
+                disabledContainerColor = EcoWhite,
                 cursorColor = EcoGreen
             )
         )
