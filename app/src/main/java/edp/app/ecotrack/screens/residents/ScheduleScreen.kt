@@ -1,5 +1,14 @@
 package edp.app.ecotrack.screens.residents
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,10 +50,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -52,6 +64,24 @@ import java.time.format.TextStyle
 import java.util.Locale
 import edp.app.ecotrack.data.model.ResidentSchedule
 import edp.app.ecotrack.data.repository.ResidentScheduleRepository
+import edp.app.ecotrack.network.ApiClient
+
+private fun parseCollectionDate(dateStr: String): LocalDate? {
+    return try {
+        LocalDate.parse(dateStr.trim())
+    } catch (_: Exception) {
+        try {
+            val dayOfWeek = java.time.DayOfWeek.valueOf(dateStr.trim().uppercase(Locale.ENGLISH))
+            val today = LocalDate.now()
+            var daysUntil = dayOfWeek.value - today.dayOfWeek.value
+            if (daysUntil < 0) daysUntil += 7
+            today.plusDays(daysUntil.toLong())
+        } catch (_: Exception) {
+            null
+        }
+    }
+}
+
 private val EcoDarkGreen = Color(0xFF24652A)
 private val EcoGreen = Color(0xFF2D9B59)
 private val EcoLightGreen = Color(0xFFE0F4E8)
@@ -64,16 +94,37 @@ fun ScheduleScreen(
     accessToken: String,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val sharedPreferences = remember {
+        context.getSharedPreferences("ecotrack_prefs", Context.MODE_PRIVATE)
+    }
+
     var schedules by remember {
         mutableStateOf<List<ResidentSchedule>>(emptyList())
     }
 
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var remindersEnabled by remember { mutableStateOf(true) }
+    var remindersEnabled by remember {
+        mutableStateOf(sharedPreferences.getBoolean("reminders_enabled", true))
+    }
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var reloadKey by remember { mutableStateOf(0) }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            remindersEnabled = true
+            sharedPreferences.edit().putBoolean("reminders_enabled", true).apply()
+            scheduleCollectionReminders(context)
+        } else {
+            remindersEnabled = false
+            sharedPreferences.edit().putBoolean("reminders_enabled", false).apply()
+            cancelCollectionReminders(context)
+        }
+    }
 
     LaunchedEffect(accessToken, reloadKey) {
         if (accessToken.isBlank()) {
@@ -85,7 +136,27 @@ fun ScheduleScreen(
             errorMessage = null
 
             try {
-                schedules = ResidentScheduleRepository.getSchedules(accessToken)
+                val profileResult = ApiClient.getResidentProfile(accessToken)
+                val userObj = profileResult.optJSONObject("user") ?: profileResult
+                val residentBarangayId = userObj.optInt("barangay_id", 0)
+
+                val fetchedSchedules = ResidentScheduleRepository.getSchedules(accessToken)
+
+                if (residentBarangayId > 0 && fetchedSchedules.isNotEmpty()) {
+                    val mismatch = fetchedSchedules.any { it.barangayId != residentBarangayId }
+                    if (mismatch) {
+                        errorMessage = "Assigned barangay mismatch: Your barangay (ID $residentBarangayId) does not match the collection schedules barangay."
+                        schedules = emptyList()
+                    } else {
+                        schedules = fetchedSchedules
+                    }
+                } else {
+                    schedules = fetchedSchedules
+                }
+
+                if (remindersEnabled && errorMessage == null) {
+                    scheduleCollectionReminders(context)
+                }
             } catch (exception: Exception) {
                 schedules = emptyList()
                 errorMessage = exception.message
@@ -97,13 +168,8 @@ fun ScheduleScreen(
     }
 
     val selectedSchedules = schedules.filter { schedule ->
-        schedule.collectionDay.equals(
-            selectedDate.dayOfWeek.getDisplayName(
-                TextStyle.FULL,
-                Locale.ENGLISH
-            ),
-            ignoreCase = true
-        )
+        val scheduleDate = parseCollectionDate(schedule.collectionDay)
+        scheduleDate != null && scheduleDate == selectedDate
     }
 
     LazyColumn(
@@ -197,8 +263,20 @@ fun ScheduleScreen(
 
                     Switch(
                         checked = remindersEnabled,
-                        onCheckedChange = {
-                            remindersEnabled = it
+                        onCheckedChange = { enabled ->
+                            remindersEnabled = enabled
+                            sharedPreferences.edit().putBoolean("reminders_enabled", enabled).apply()
+                            if (enabled) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                    context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    scheduleCollectionReminders(context)
+                                }
+                            } else {
+                                cancelCollectionReminders(context)
+                            }
                         }
                     )
                 }
@@ -299,13 +377,8 @@ fun ScheduleScreen(
                                     val isSelected = date == selectedDate
 
                                     val hasCollection = schedules.any { schedule ->
-                                        schedule.collectionDay.equals(
-                                            date.dayOfWeek.getDisplayName(
-                                                TextStyle.FULL,
-                                                Locale.ENGLISH
-                                            ),
-                                            ignoreCase = true
-                                        )
+                                        val scheduleDate = parseCollectionDate(schedule.collectionDay)
+                                        scheduleDate != null && scheduleDate == date
                                     }
 
                                     Column(
@@ -513,6 +586,43 @@ fun ScheduleScreen(
     }
 }
 
+@SuppressLint("MissingPermission")
+private fun scheduleCollectionReminders(context: Context) {
+    val notificationManager = NotificationManagerCompat.from(context)
+    val channel = NotificationChannel(
+        "collection_reminders",
+        "Collection Reminders",
+        NotificationManager.IMPORTANCE_DEFAULT
+    ).apply {
+        description = "Notifications for upcoming waste collection schedules"
+    }
+    notificationManager.createNotificationChannel(channel)
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+    ) {
+        return
+    }
+
+    val notification = NotificationCompat.Builder(context, "collection_reminders")
+        .setSmallIcon(android.R.drawable.ic_menu_agenda)
+        .setContentTitle("Collection Reminders Active")
+        .setContentText("You are set to receive notifications before scheduled waste collections.")
+        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        .setAutoCancel(true)
+        .build()
+
+    notificationManager.notify(1001, notification)
+}
+
+private fun cancelCollectionReminders(context: Context) {
+    val notificationManager = NotificationManagerCompat.from(context)
+    notificationManager.cancel(1001)
+    for (i in 2000..2010) {
+        notificationManager.cancel(i)
+    }
+}
+
 @Composable
 private fun EmptyScheduleCard(
     message: String
@@ -550,7 +660,6 @@ private fun EmptyScheduleCard(
         }
     }
 }
-
 
 @Composable
 private fun CollectionScheduleCard(
@@ -618,8 +727,12 @@ private fun CollectionScheduleCard(
 
                 Spacer(modifier = Modifier.height(5.dp))
 
+                val formattedDate = parseCollectionDate(schedule.collectionDay)?.format(
+                    DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy", Locale.ENGLISH)
+                ) ?: schedule.collectionDay
+
                 Text(
-                    text = schedule.collectionDay,
+                    text = formattedDate,
                     color = EcoGray,
                     fontSize = 13.sp
                 )

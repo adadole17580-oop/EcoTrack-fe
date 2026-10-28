@@ -5,10 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import edp.app.ecotrack.data.model.ResidentDashboardResponse
 import edp.app.ecotrack.data.repository.ResidentDashboardRepository
+import edp.app.ecotrack.network.ApiClient
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ResidentDashboardViewModel : ViewModel() {
 
@@ -23,6 +26,9 @@ class ResidentDashboardViewModel : ViewModel() {
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _hasUnreadNotifications = MutableStateFlow(false)
+    val hasUnreadNotifications: StateFlow<Boolean> = _hasUnreadNotifications.asStateFlow()
+
     fun loadDashboard(accessToken: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -30,11 +36,34 @@ class ResidentDashboardViewModel : ViewModel() {
 
             try {
                 _dashboard.value = repository.getDashboard(accessToken)
+                loadUnreadNotifications(accessToken)
             } catch (exception: Exception) {
                 _errorMessage.value =
                     exception.message ?: "Unable to load resident dashboard."
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun loadUnreadNotifications(accessToken: String) {
+        viewModelScope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    ApiClient.getResidentNotifications(accessToken)
+                }
+                val array = response.optJSONArray("notifications")
+                var unreadCount = 0
+                if (array != null) {
+                    for (i in 0 until array.length()) {
+                        val item = array.optJSONObject(i)
+                        if (item != null && !item.optBoolean("is_read", false)) {
+                            unreadCount++
+                        }
+                    }
+                }
+                _hasUnreadNotifications.value = unreadCount > 0
+            } catch (_: Exception) {
             }
         }
     }

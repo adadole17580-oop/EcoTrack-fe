@@ -20,7 +20,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 
 object ApiClient {
-       var BASE_URL = "http://192.168.0.187:3000/"
+       var BASE_URL = "http://172.16.137.33:3000/"
     private const val TAG = "EcoTrackAPI"
 
     private val client = OkHttpClient()
@@ -618,6 +618,43 @@ object ApiClient {
                 throw IOException(
                     result.optString("message")
                         .ifBlank { "Unable to reset your password. Please try again." }
+                )
+            }
+
+            result
+        }
+    }
+
+    suspend fun cancelResidentReport(
+        accessToken: String,
+        reportId: Long
+    ): JSONObject = withContext(Dispatchers.IO) {
+        val fullUrl =
+            "${BASE_URL.trimEnd('/')}/api/residents/reports/$reportId/cancel"
+
+        val body = "{}".toRequestBody(
+            "application/json; charset=utf-8".toMediaType()
+        )
+
+        val request = Request.Builder()
+            .url(fullUrl)
+            .header("Authorization", "Bearer ${accessToken.trim()}")
+            .put(body)
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val responseText = response.body?.string().orEmpty()
+            val result = if (responseText.isNotBlank()) {
+                JSONObject(responseText)
+            } else {
+                JSONObject()
+            }
+
+            if (!response.isSuccessful) {
+                throw IOException(
+                    result.optString("message").ifBlank {
+                        "Unable to cancel the report."
+                    }
                 )
             }
 

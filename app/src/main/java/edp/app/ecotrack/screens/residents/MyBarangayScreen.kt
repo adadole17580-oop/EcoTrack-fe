@@ -97,34 +97,48 @@ private suspend fun loadMyBarangay(
 
         val nextSchedule = schedules
             .mapNotNull { schedule ->
-                val day = try {
-                    DayOfWeek.valueOf(
-                        schedule.collectionDay
-                            .trim()
-                            .uppercase(Locale.ENGLISH)
-                    )
+                val scheduleDate = try {
+                    LocalDate.parse(schedule.collectionDay.trim())
                 } catch (_: Exception) {
-                    null
+                    try {
+                        val dayOfWeek = DayOfWeek.valueOf(
+                            schedule.collectionDay.trim().uppercase(Locale.ENGLISH)
+                        )
+                        var daysUntil = dayOfWeek.value - today.dayOfWeek.value
+                        if (daysUntil < 0) daysUntil += 7
+                        today.plusDays(daysUntil.toLong())
+                    } catch (_: Exception) {
+                        return@mapNotNull null
+                    }
                 }
 
-                day?.let {
-                    val daysUntil = (it.value - today.dayOfWeek.value + 7) % 7
-                    Triple(schedule, daysUntil, it)
+                if (scheduleDate.isBefore(today)) {
+                    return@mapNotNull null
                 }
+
+                val daysUntil = java.time.temporal.ChronoUnit.DAYS.between(today, scheduleDate)
+                Triple(schedule, daysUntil, scheduleDate)
             }
             .minByOrNull { it.second }
 
         if (nextSchedule != null) {
             val schedule = nextSchedule.first
-            val dayLabel = if (nextSchedule.second == 0) {
-                "Today"
-            } else if (nextSchedule.second == 1) {
-                "Tomorrow"
-            } else {
-                schedule.collectionDay
+            val daysUntil = nextSchedule.second
+            val dayLabel = when (daysUntil) {
+                0L -> "Today"
+                1L -> "Tomorrow"
+                else -> nextSchedule.third.format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH))
             }
 
-            "${schedule.wasteType} • $dayLabel • ${schedule.collectionTime}"
+            val timeFormatted = try {
+                java.time.LocalTime.parse(schedule.collectionTime).format(
+                    DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH)
+                )
+            } catch (_: Exception) {
+                schedule.collectionTime
+            }
+
+            "${schedule.wasteType} • $dayLabel • $timeFormatted"
         } else {
             "No upcoming collection scheduled"
         }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -263,13 +264,17 @@ fun HomeScreen(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .size(7.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFFF6B6B))
-                        .align(Alignment.TopEnd)
-                )
+                val hasUnread by dashboardViewModel.hasUnreadNotifications.collectAsState()
+                if (hasUnread) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .align(Alignment.TopEnd)
+                            .offset(x = (-4).dp, y = 4.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFF6B6B))
+                    )
+                }
             }
         }
 
@@ -598,22 +603,20 @@ private fun findNextCollection(
     today: LocalDate
 ): UpcomingCollection? {
     val upcomingCollections = schedules.mapNotNull { schedule ->
-        val collectionDay = try {
-            DayOfWeek.valueOf(
-                schedule.collectionDay.trim().uppercase(Locale.ENGLISH)
-            )
+        val collectionDate = try {
+            LocalDate.parse(schedule.collectionDay.trim())
         } catch (_: Exception) {
-            return@mapNotNull null
+            try {
+                val dayOfWeek = DayOfWeek.valueOf(
+                    schedule.collectionDay.trim().uppercase(Locale.ENGLISH)
+                )
+                var daysUntil = dayOfWeek.value - today.dayOfWeek.value
+                if (daysUntil < 0) daysUntil += 7
+                today.plusDays(daysUntil.toLong())
+            } catch (_: Exception) {
+                return@mapNotNull null
+            }
         }
-
-        var daysUntilCollection =
-            collectionDay.value - today.dayOfWeek.value
-
-        if (daysUntilCollection < 0) {
-            daysUntilCollection += 7
-        }
-
-        val collectionDate = today.plusDays(daysUntilCollection.toLong())
 
         val collectionTime = try {
             LocalTime.parse(schedule.collectionTime)
@@ -621,7 +624,7 @@ private fun findNextCollection(
             LocalTime.MIDNIGHT
         }
 
-        if (collectionDate == today && collectionTime.isBefore(LocalTime.now())) {
+        if (collectionDate.isBefore(today) || (collectionDate == today && collectionTime.isBefore(LocalTime.now()))) {
             return@mapNotNull null
         }
 

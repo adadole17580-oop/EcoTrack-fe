@@ -1,11 +1,15 @@
 package edp.app.ecotrack.screens.residents
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -18,10 +22,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,11 +38,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,10 +54,10 @@ import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
 import edp.app.ecotrack.network.ApiClient
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.IOException
-import coil3.compose.AsyncImage
 
 private val ReportGreen = Color(0xFF24652A)
 private val ReportLightGreen = Color(0xFFE0F4E8)
@@ -58,11 +69,18 @@ private val ReportMuted = Color(0xFF788078)
 fun ReportDetailsScreen(
     accessToken: String,
     reportId: Long,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onReportUpdated: () -> Unit = {}
 ) {
     var report by remember(reportId) { mutableStateOf<JSONObject?>(null) }
     var isLoading by remember(reportId) { mutableStateOf(true) }
     var errorMessage by remember(reportId) { mutableStateOf<String?>(null) }
+    var showCancelConfirmation by remember { mutableStateOf(false) }
+    var isCancelling by remember { mutableStateOf(false) }
+    var cancelError by remember { mutableStateOf<String?>(null) }
+    var showFullScreenPhoto by remember { mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(accessToken, reportId) {
         isLoading = true
@@ -192,7 +210,7 @@ fun ReportDetailsScreen(
                                 shape = RoundedCornerShape(50),
                                 color = when (status.lowercase()) {
                                     "resolved" -> Color(0xFFE0F4E8)
-                                    "rejected" -> Color(0xFFFCE8E6)
+                                    "rejected", "cancelled" -> Color(0xFFFCE8E6)
                                     else -> Color(0xFFFFF3D6)
                                 }
                             ) {
@@ -206,7 +224,7 @@ fun ReportDetailsScreen(
                                     fontWeight = FontWeight.SemiBold,
                                     color = when (status.lowercase()) {
                                         "resolved" -> ReportGreen
-                                        "rejected" -> Color(0xFFB3261E)
+                                        "rejected", "cancelled" -> Color(0xFFB3261E)
                                         else -> Color(0xFF946200)
                                     }
                                 )
@@ -223,7 +241,6 @@ fun ReportDetailsScreen(
 
                         Spacer(modifier = Modifier.height(18.dp))
 
-
                         if (photoUrl.isNotBlank() && photoUrl != "null") {
                             var photoLoadFailed by remember(photoUrl) {
                                 mutableStateOf(false)
@@ -236,7 +253,8 @@ fun ReportDetailsScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .heightIn(min = 160.dp, max = 260.dp)
-                                        .clip(RoundedCornerShape(18.dp)),
+                                        .clip(RoundedCornerShape(18.dp))
+                                        .clickable { showFullScreenPhoto = true },
                                     contentScale = ContentScale.Crop,
                                     onError = {
                                         photoLoadFailed = true
@@ -316,19 +334,38 @@ fun ReportDetailsScreen(
 
                         Spacer(modifier = Modifier.height(18.dp))
 
+                        if (status.lowercase() == "pending") {
+                            OutlinedButton(
+                                onClick = { showCancelConfirmation = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFFB3261E)
+                                ),
+                                border = BorderStroke(1.dp, Color(0xFFB3261E))
+                            ) {
+                                Text(
+                                    text = "Cancel Report",
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
 
                         Box(
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center
                         ) {
-                            androidx.compose.material3.Button(
+                            Button(
                                 onClick = onDismiss,
                                 modifier = Modifier
                                     .fillMaxWidth(0.75f)
                                     .height(48.dp),
                                 shape = RoundedCornerShape(14.dp),
-                                colors = androidx.compose.material3.ButtonDefaults
-                                    .buttonColors(containerColor = ReportGreen)
+                                colors = ButtonDefaults.buttonColors(containerColor = ReportGreen)
                             ) {
                                 Text(
                                     text = "Close",
@@ -336,9 +373,133 @@ fun ReportDetailsScreen(
                                 )
                             }
                         }
-
                     }
                 }
+            }
+        }
+    }
+
+    if (showCancelConfirmation) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isCancelling) showCancelConfirmation = false
+            },
+            title = { Text("Cancel Report") },
+            text = {
+                Column {
+                    Text("Are you sure you want to cancel this pending report? This action cannot be undone.")
+                    if (cancelError != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(cancelError!!, color = Color(0xFFB3261E))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            isCancelling = true
+                            cancelError = null
+                            try {
+                                val result = withContext(Dispatchers.IO) {
+                                    ApiClient.cancelResidentReport(accessToken, reportId)
+                                }
+                                report = result.optJSONObject("report") ?: report
+                                showCancelConfirmation = false
+                                onReportUpdated()
+                            } catch (e: Exception) {
+                                cancelError = e.message ?: "Unable to cancel the report."
+                            } finally {
+                                isCancelling = false
+                            }
+                        }
+                    },
+                    enabled = !isCancelling
+                ) {
+                    if (isCancelling) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color(0xFFB3261E)
+                        )
+                    } else {
+                        Text("Yes, Cancel", color = Color(0xFFB3261E))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showCancelConfirmation = false },
+                    enabled = !isCancelling
+                ) {
+                    Text("Keep Report", color = ReportGreen)
+                }
+            }
+        )
+    }
+
+    val currentPhotoUrl = report?.optString("photo_url") ?: ""
+    if (showFullScreenPhoto && currentPhotoUrl.isNotBlank() && currentPhotoUrl != "null") {
+        FullScreenPhotoViewer(
+            photoUrl = currentPhotoUrl,
+            onDismiss = { showFullScreenPhoto = false }
+        )
+    }
+}
+
+@Composable
+private fun FullScreenPhotoViewer(
+    photoUrl: String,
+    onDismiss: () -> Unit
+) {
+    var scale by remember { mutableStateOf(1f) }
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        scale = (scale * zoom).coerceIn(1f, 5f)
+                        if (scale == 1f) {
+                            offsetX = 0f
+                            offsetY = 0f
+                        } else {
+                            offsetX += pan.x
+                            offsetY += pan.y
+                        }
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            AsyncImage(
+                model = photoUrl,
+                contentDescription = "Full-screen report photo",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offsetX,
+                        translationY = offsetY
+                    ),
+                contentScale = ContentScale.Fit
+            )
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close full-screen view",
+                    tint = Color.White
+                )
             }
         }
     }
