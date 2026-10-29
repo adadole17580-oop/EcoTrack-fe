@@ -1,5 +1,7 @@
+
 package edp.app.ecotrack.screens.analytics
 
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -36,6 +38,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,9 +53,16 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import edp.app.ecotrack.network.ApiClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 // ============================================================
-// COLORS - SAME AS DASHBOARD
+// COLORS - SAME AS ORIGINAL
 // ============================================================
 
 private val EcoDarkGreen = Color(0xFF216B2A)
@@ -64,7 +76,7 @@ private val White = Color.White
 private val SelectedGreen = Color(0xFF719873)
 
 // ============================================================
-// ANALYTICS COLORS
+// ANALYTICS COLORS - SAME AS ORIGINAL
 // ============================================================
 
 private val CardWhite = Color.White
@@ -72,7 +84,7 @@ private val MutedGreen = Color(0xFF6D9672)
 private val ProgressBackground = Color(0xFFE2E2E2)
 
 // ============================================================
-// DATA
+// DATA MODELS
 // ============================================================
 
 private data class CategoryReport(
@@ -86,52 +98,15 @@ private data class MonthlyReport(
     val reports: Int
 )
 
-private val categoryReports = listOf(
-    CategoryReport(
-        name = "Uncollected Garbage",
-        reports = 48,
-        percentage = 34
-    ),
-    CategoryReport(
-        name = "Overflowing Garbage",
-        reports = 37,
-        percentage = 26
-    ),
-    CategoryReport(
-        name = "Illegal Dumping",
-        reports = 28,
-        percentage = 20
-    ),
-    CategoryReport(
-        name = "Improper Waste Disposal",
-        reports = 18,
-        percentage = 13
-    ),
-    CategoryReport(
-        name = "Other Waste Concern",
-        reports = 10,
-        percentage = 7
-    )
-)
-
-private val monthlyReports = listOf(
-    MonthlyReport("Apr", 25),
-    MonthlyReport("May", 34),
-    MonthlyReport("Jun", 30),
-    MonthlyReport("Jul", 42),
-    MonthlyReport("Aug", 36),
-    MonthlyReport("Sep", 48)
-)
-
 // ============================================================
 // MAIN SCREEN
 // ============================================================
 
 @Composable
 fun AnalyticsScreen(
+    accessToken: String,
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
-
     onDashboardClick: () -> Unit = {},
     onWasteReportClick: () -> Unit = {},
     onCollectorsClick: () -> Unit = {},
@@ -139,6 +114,130 @@ fun AnalyticsScreen(
     onScheduleClick: () -> Unit = {},
     onWasteGuideClick: () -> Unit = {}
 ) {
+
+    // ========================================================
+    // LOAD ACTUAL REPORTS FROM BACKEND
+    // ========================================================
+
+    val loadedReports = remember {
+        mutableStateOf<List<JSONObject>>(emptyList())
+    }
+
+    LaunchedEffect(accessToken) {
+        if (accessToken.isBlank()) {
+            return@LaunchedEffect
+        }
+
+        try {
+            val response = withContext(Dispatchers.IO) {
+                ApiClient.getWasteReports(accessToken)
+            }
+
+            if (response.optString("status") == "OK") {
+                val reportArray = response.optJSONArray("reports")
+                val result = mutableListOf<JSONObject>()
+
+                if (reportArray != null) {
+                    for (i in 0 until reportArray.length()) {
+                        val report = reportArray.optJSONObject(i)
+
+                        if (report != null) {
+                            result.add(report)
+                        }
+                    }
+                }
+
+                loadedReports.value = result
+            } else {
+                Log.e(
+                    "AnalyticsScreen",
+                    "Backend returned an unsuccessful response"
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(
+                "AnalyticsScreen",
+                "Failed to load analytics reports",
+                e
+            )
+        }
+    }
+
+    val reports = loadedReports.value
+    val currentMonth = YearMonth.now()
+
+    // ========================================================
+    // ACTUAL REPORTS BY CATEGORY
+    // ========================================================
+
+    val categoryReports = remember(reports) {
+        val total = reports.size
+
+        reports
+            .groupBy {
+                it.optString("report_type")
+                    .trim()
+                    .ifBlank { "Other Waste Concern" }
+            }
+            .map { (name, items) ->
+                CategoryReport(
+                    name = name,
+                    reports = items.size,
+                    percentage = if (total > 0) {
+                        items.size * 100 / total
+                    } else {
+                        0
+                    }
+                )
+            }
+            .sortedByDescending { it.reports }
+            .take(5)
+    }
+
+    // ========================================================
+    // ACTUAL REPORT COUNTS FOR THE LAST SIX MONTHS
+    // ========================================================
+
+    val monthlyReports = remember(reports) {
+        (5 downTo 0).map { offset ->
+            val month = currentMonth.minusMonths(offset.toLong())
+
+            MonthlyReport(
+                month = month.format(
+                    DateTimeFormatter.ofPattern(
+                        "MMM",
+                        Locale.ENGLISH
+                    )
+                ),
+                reports = reports.count {
+                    it.optString("created_at")
+                        .take(7) == month.toString()
+                }
+            )
+        }
+    }
+
+    // ========================================================
+    // ACTUAL SUMMARY VALUES
+    // ========================================================
+
+    val totalReports = reports.size
+
+    // Counts reports created this month that currently have
+    // a resolved status. The API does not provide resolved_at.
+    val resolvedThisMonth = reports.count {
+        it.optString("status")
+            .equals("resolved", ignoreCase = true) &&
+                it.optString("created_at")
+                    .take(7) == currentMonth.toString()
+    }
+
+    val mostCommonIssue =
+        categoryReports.firstOrNull()?.name ?: "—"
+
+    // ========================================================
+    // ORIGINAL SCREEN LAYOUT - UNCHANGED
+    // ========================================================
 
     Row(
         modifier = Modifier
@@ -208,11 +307,15 @@ fun AnalyticsScreen(
                 ) {
 
                     ReportsByCategoryCard(
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        categoryReports = categoryReports
                     )
 
                     ReportStatusSummaryCard(
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        totalReports = totalReports,
+                        resolvedThisMonth = resolvedThisMonth,
+                        mostCommonIssue = mostCommonIssue
                     )
                 }
 
@@ -225,7 +328,9 @@ fun AnalyticsScreen(
                 // =================================================
 
                 MonthlyTrendCard(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    monthlyReports = monthlyReports,
+                    currentMonth = currentMonth
                 )
             }
         }
@@ -233,7 +338,7 @@ fun AnalyticsScreen(
 }
 
 // ============================================================
-// TOP BAR - SAME AS DASHBOARD
+// TOP BAR - SAME AS ORIGINAL
 // ============================================================
 
 @Composable
@@ -252,24 +357,9 @@ private fun AnalyticsTopBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
 
-        // =====================================================
-        // MENU ICON
-        // =====================================================
-
-        Icon(
-            imageVector = Icons.Default.Menu,
-            contentDescription = "Menu",
-            tint = EcoDarkGreen,
-            modifier = Modifier.size(23.dp)
-        )
-
         Spacer(
             modifier = Modifier.width(15.dp)
         )
-
-        // =====================================================
-        // TITLE
-        // =====================================================
 
         Text(
             text = "Analytics",
@@ -282,11 +372,6 @@ private fun AnalyticsTopBar(
             modifier = Modifier.weight(1f)
         )
 
-        // =====================================================
-        // NOTIFICATION
-        // SAME AS DASHBOARD
-        // =====================================================
-
         IconButton(
             onClick = onNotificationClick
         ) {
@@ -298,11 +383,6 @@ private fun AnalyticsTopBar(
                 modifier = Modifier.size(23.dp)
             )
         }
-
-        // =====================================================
-        // PROFILE
-        // SAME AS DASHBOARD
-        // =====================================================
 
         IconButton(
             onClick = onProfileClick
@@ -319,7 +399,7 @@ private fun AnalyticsTopBar(
 }
 
 // ============================================================
-// SIDEBAR - SAME AS DASHBOARD
+// SIDEBAR - SAME AS ORIGINAL
 // ============================================================
 
 @Composable
@@ -339,10 +419,6 @@ private fun AnalyticsSidebar(
             .background(EcoDarkGreen)
     ) {
 
-        // =====================================================
-        // ECOTRACK LOGO - SAME AS DASHBOARD
-        // =====================================================
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -359,10 +435,6 @@ private fun AnalyticsSidebar(
                 fontWeight = FontWeight.Medium
             )
         }
-
-        // =====================================================
-        // ADMINISTRATOR - SAME AS DASHBOARD
-        // =====================================================
 
         Column(
             modifier = Modifier
@@ -405,20 +477,12 @@ private fun AnalyticsSidebar(
             modifier = Modifier.height(20.dp)
         )
 
-        // =====================================================
-        // DASHBOARD
-        // =====================================================
-
         AnalyticsSidebarItem(
             icon = Icons.Default.GridView,
             text = "Dashboard",
             selected = false,
             onClick = onDashboardClick
         )
-
-        // =====================================================
-        // WASTE REPORT
-        // =====================================================
 
         AnalyticsSidebarItem(
             icon = Icons.Default.Description,
@@ -427,20 +491,12 @@ private fun AnalyticsSidebar(
             onClick = onWasteReportClick
         )
 
-        // =====================================================
-        // COLLECTORS
-        // =====================================================
-
         AnalyticsSidebarItem(
             icon = Icons.Default.LocalShipping,
             text = "Collectors",
             selected = false,
             onClick = onCollectorsClick
         )
-
-        // =====================================================
-        // RESIDENTS
-        // =====================================================
 
         AnalyticsSidebarItem(
             icon = Icons.Default.Groups,
@@ -449,10 +505,6 @@ private fun AnalyticsSidebar(
             onClick = onResidentsClick
         )
 
-        // =====================================================
-        // SCHEDULES
-        // =====================================================
-
         AnalyticsSidebarItem(
             icon = Icons.Default.CalendarMonth,
             text = "Schedules",
@@ -460,20 +512,12 @@ private fun AnalyticsSidebar(
             onClick = onScheduleClick
         )
 
-        // =====================================================
-        // ANALYTICS - SELECTED
-        // =====================================================
-
         AnalyticsSidebarItem(
             icon = Icons.Default.BarChart,
             text = "Analytics",
             selected = true,
             onClick = {}
         )
-
-        // =====================================================
-        // WASTE GUIDE
-        // =====================================================
 
         AnalyticsSidebarItem(
             icon = Icons.Default.MenuBook,
@@ -485,7 +529,7 @@ private fun AnalyticsSidebar(
 }
 
 // ============================================================
-// SIDEBAR ITEM - SAME AS DASHBOARD
+// SIDEBAR ITEM - SAME AS ORIGINAL
 // ============================================================
 
 @Composable
@@ -544,12 +588,13 @@ private fun AnalyticsSidebarItem(
 }
 
 // ============================================================
-// REPORTS BY CATEGORY
+// REPORTS BY CATEGORY - SAME DESIGN, REAL DATA
 // ============================================================
 
 @Composable
 private fun ReportsByCategoryCard(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    categoryReports: List<CategoryReport>
 ) {
 
     Surface(
@@ -594,7 +639,7 @@ private fun ReportsByCategoryCard(
 }
 
 // ============================================================
-// CATEGORY ROW
+// CATEGORY ROW - SAME DESIGN
 // ============================================================
 
 @Composable
@@ -655,12 +700,15 @@ private fun CategoryProgressRow(
 }
 
 // ============================================================
-// REPORT STATUS SUMMARY
+// REPORT STATUS SUMMARY - SAME DESIGN, REAL DATA
 // ============================================================
 
 @Composable
 private fun ReportStatusSummaryCard(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    totalReports: Int,
+    resolvedThisMonth: Int,
+    mostCommonIssue: String
 ) {
 
     Surface(
@@ -692,39 +740,39 @@ private fun ReportStatusSummaryCard(
 
             AnalyticsSummaryRow(
                 label = "Total Reports Submitted",
-                value = "441"
+                value = totalReports.toString()
             )
 
             AnalyticsSummaryRow(
                 label = "Resolved This Month",
-                value = "28"
+                value = resolvedThisMonth.toString()
             )
 
             AnalyticsSummaryRow(
                 label = "Average Resolution Time",
-                value = "2.4 days"
+                value = "—"
             )
 
             AnalyticsSummaryRow(
                 label = "Collector Efficiency Rate",
-                value = "91%"
+                value = "—"
             )
 
             AnalyticsSummaryRow(
                 label = "Most Active Barangay",
-                value = "Area A (38%)"
+                value = "—"
             )
 
             AnalyticsSummaryRow(
                 label = "Most Common Issue",
-                value = "Uncollected Garbage"
+                value = mostCommonIssue
             )
         }
     }
 }
 
 // ============================================================
-// SUMMARY ROW
+// SUMMARY ROW - SAME AS ORIGINAL
 // ============================================================
 
 @Composable
@@ -759,12 +807,14 @@ private fun AnalyticsSummaryRow(
 }
 
 // ============================================================
-// MONTHLY TREND
+// MONTHLY TREND - SAME DESIGN, REAL DATA
 // ============================================================
 
 @Composable
 private fun MonthlyTrendCard(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    monthlyReports: List<MonthlyReport>,
+    currentMonth: YearMonth
 ) {
 
     Surface(
@@ -784,7 +834,7 @@ private fun MonthlyTrendCard(
         ) {
 
             Text(
-                text = "Monthly Report Trend (Sep 2026)",
+                text = "Monthly Report Trend (${currentMonth.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH))})",
                 color = Color(0xFF159348),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium
@@ -800,7 +850,9 @@ private fun MonthlyTrendCard(
                     .weight(1f)
             ) {
 
-                MonthlyLineChart()
+                MonthlyLineChart(
+                    monthlyReports = monthlyReports
+                )
             }
 
             Spacer(
@@ -808,7 +860,7 @@ private fun MonthlyTrendCard(
             )
 
             Text(
-                text = "Daily report submissions — September 2026",
+                text = "Monthly report submissions — last six months",
                 color = MutedGreen,
                 fontSize = 9.sp
             )
@@ -817,11 +869,13 @@ private fun MonthlyTrendCard(
 }
 
 // ============================================================
-// MONTHLY LINE CHART
+// MONTHLY LINE CHART - SAME STYLE, REAL DATA
 // ============================================================
 
 @Composable
-private fun MonthlyLineChart() {
+private fun MonthlyLineChart(
+    monthlyReports: List<MonthlyReport>
+) {
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -832,6 +886,10 @@ private fun MonthlyLineChart() {
                 .fillMaxWidth()
                 .weight(1f)
         ) {
+
+            if (monthlyReports.isEmpty()) {
+                return@Canvas
+            }
 
             val leftPadding = 35f
             val rightPadding = 12f
@@ -848,9 +906,7 @@ private fun MonthlyLineChart() {
                         topPadding -
                         bottomPadding
 
-            // =================================================
             // GRID LINES
-            // =================================================
 
             val gridCount = 4
 
@@ -859,10 +915,7 @@ private fun MonthlyLineChart() {
                 val y =
                     topPadding +
                             chartHeight *
-                            (
-                                    i.toFloat() /
-                                            gridCount
-                                    )
+                            (i.toFloat() / gridCount)
 
                 drawLine(
                     color = Color(0xFFE5EDE6),
@@ -873,8 +926,7 @@ private fun MonthlyLineChart() {
                     ),
 
                     end = Offset(
-                        size.width -
-                                rightPadding,
+                        size.width - rightPadding,
                         y
                     ),
 
@@ -882,103 +934,90 @@ private fun MonthlyLineChart() {
                 )
             }
 
-            // =================================================
-            // VALUES
-            // =================================================
+            // ACTUAL MONTHLY VALUES
 
-            val values =
-                monthlyReports.map {
-                    it.reports
-                }
+            val values = monthlyReports.map {
+                it.reports
+            }
 
-            val maxValue = 50f
+            val maxValue = (values.maxOrNull() ?: 1)
+                .coerceAtLeast(1)
+                .toFloat()
 
-            val points =
-                values.mapIndexed { index, value ->
+            val points = values.mapIndexed { index, value ->
 
-                    val x =
+                val x =
+                    if (values.size == 1) {
+                        leftPadding + chartWidth / 2f
+                    } else {
                         leftPadding +
                                 chartWidth *
-                                (
-                                        index.toFloat() /
-                                                (values.size - 1)
-                                        )
-
-                    val y =
-                        topPadding +
-                                chartHeight -
-                                (
-                                        value /
-                                                maxValue
-                                        ) *
-                                chartHeight
-
-                    Offset(
-                        x,
-                        y
-                    )
-                }
-
-            // =================================================
-            // AREA
-            // =================================================
-
-            val areaPath =
-                Path().apply {
-
-                    moveTo(
-                        points.first().x,
-                        points.first().y
-                    )
-
-                    points.drop(1).forEach {
-
-                        lineTo(
-                            it.x,
-                            it.y
-                        )
+                                (index.toFloat() / (values.size - 1))
                     }
 
-                    lineTo(
-                        points.last().x,
-                        topPadding +
-                                chartHeight
-                    )
+                val y =
+                    topPadding +
+                            chartHeight -
+                            (value / maxValue) * chartHeight
+
+                Offset(
+                    x,
+                    y
+                )
+            }
+
+            // AREA
+
+            val areaPath = Path().apply {
+
+                moveTo(
+                    points.first().x,
+                    points.first().y
+                )
+
+                points.drop(1).forEach {
 
                     lineTo(
-                        points.first().x,
-                        topPadding +
-                                chartHeight
+                        it.x,
+                        it.y
                     )
-
-                    close()
                 }
+
+                lineTo(
+                    points.last().x,
+                    topPadding + chartHeight
+                )
+
+                lineTo(
+                    points.first().x,
+                    topPadding + chartHeight
+                )
+
+                close()
+            }
 
             drawPath(
                 path = areaPath,
                 color = Color(0xFFE7F6EA)
             )
 
-            // =================================================
             // LINE
-            // =================================================
 
-            val linePath =
-                Path().apply {
+            val linePath = Path().apply {
 
-                    moveTo(
-                        points.first().x,
-                        points.first().y
+                moveTo(
+                    points.first().x,
+                    points.first().y
+                )
+
+                points.drop(1).forEach {
+
+                    lineTo(
+                        it.x,
+                        it.y
                     )
-
-                    points.drop(1).forEach {
-
-                        lineTo(
-                            it.x,
-                            it.y
-                        )
-                    }
                 }
+            }
 
             drawPath(
                 path = linePath,
@@ -989,9 +1028,7 @@ private fun MonthlyLineChart() {
                 )
             )
 
-            // =================================================
             // POINTS
-            // =================================================
 
             points.forEach { point ->
 
@@ -1009,9 +1046,7 @@ private fun MonthlyLineChart() {
             }
         }
 
-        // =====================================================
         // MONTH LABELS
-        // =====================================================
 
         Row(
             modifier = Modifier

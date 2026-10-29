@@ -26,6 +26,7 @@ import edp.app.ecotrack.network.ApiClient
 import edp.app.ecotrack.screens.analytics.AnalyticsScreen
 import edp.app.ecotrack.screens.collectors.CollectorsScreen
 import edp.app.ecotrack.screens.dashboard.AdminInfo
+
 import edp.app.ecotrack.screens.dashboard.DashboardScreen
 import edp.app.ecotrack.screens.notifications.NotificationsScreen
 import edp.app.ecotrack.screens.profile.ProfileScreen
@@ -33,6 +34,7 @@ import edp.app.ecotrack.screens.residents.ResidentsScreen
 import edp.app.ecotrack.screens.schedule.ScheduleScreen
 import edp.app.ecotrack.screens.waste_guide.WasteGuideScreen
 import edp.app.ecotrack.screens.waste_report.WasteReportScreen
+import edp.app.ecotrack.screens.waste_report.WasteReport
 
 object Routes {
     const val LOGIN = "login"
@@ -56,19 +58,42 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
 
-    // Keep the token through normal activity recreation.
-    val accessToken = rememberSaveable { mutableStateOf("") }
+    // Current admin session token
+    val accessToken = rememberSaveable {
+        mutableStateOf("")
+    }
 
+    // Dashboard statistics
     val dashboardStatistics = remember {
         mutableStateOf<JSONObject?>(null)
     }
-    val statisticsLoading = remember { mutableStateOf(false) }
-    val statisticsError = remember { mutableStateOf("") }
+
+    val statisticsLoading = remember {
+        mutableStateOf(false)
+    }
+
+    val statisticsError = remember {
+        mutableStateOf("")
+    }
+
+    // Actual waste reports for the dashboard
+    val recentWasteReports = remember {
+        mutableStateOf<List<WasteReport>>(emptyList())
+    }
+
+    val reportsLoading = remember {
+        mutableStateOf(false)
+    }
+
+    val reportsError = remember {
+        mutableStateOf("")
+    }
 
     NavHost(
         navController = navController,
         startDestination = Routes.LOGIN
     ) {
+
         // LOGIN
         composable(Routes.LOGIN) {
             LoginScreen(
@@ -84,6 +109,7 @@ fun AppNavigation() {
 
                             val user = response.optJSONObject("user")
                             val role = user?.optString("role").orEmpty()
+
                             val session = response.optJSONObject("session")
                             val token = session
                                 ?.optString("access_token")
@@ -100,6 +126,8 @@ fun AppNavigation() {
                                 accessToken.value = token
                                 dashboardStatistics.value = null
                                 statisticsError.value = ""
+                                recentWasteReports.value = emptyList()
+                                reportsError.value = ""
 
                                 Log.d(
                                     "ECO_TRACK",
@@ -174,7 +202,7 @@ fun AppNavigation() {
                     }
                 },
                 onResendCodeClick = {
-                    // Connect to the backend when OTP delivery is implemented.
+                    // Connect to backend when OTP delivery is implemented.
                 },
                 onBackClick = {
                     navController.popBackStack()
@@ -201,17 +229,15 @@ fun AppNavigation() {
 
         // DASHBOARD
         composable(Routes.DASHBOARD) {
+
             LaunchedEffect(accessToken.value) {
                 val token = accessToken.value
 
                 if (token.isNotBlank()) {
+
+                    // Load dashboard statistics
                     statisticsLoading.value = true
                     statisticsError.value = ""
-
-                    Log.d(
-                        "ECO_TRACK",
-                        "Dashboard screen opened; requesting statistics"
-                    )
 
                     try {
                         val response = ApiClient.getDashboardStats(
@@ -235,7 +261,7 @@ fun AppNavigation() {
                     } catch (e: Exception) {
                         Log.e(
                             "ECO_TRACK",
-                            "Dashboard request failed: ${e.message}",
+                            "Dashboard statistics request failed",
                             e
                         )
 
@@ -245,6 +271,96 @@ fun AppNavigation() {
                     } finally {
                         statisticsLoading.value = false
                     }
+
+                    // Load actual waste reports
+                    reportsLoading.value = true
+                    reportsError.value = ""
+
+                    try {
+                        val response = ApiClient.getWasteReports(
+                            accessToken = token
+                        )
+
+                        Log.d(
+                            "ECO_TRACK",
+                            "Recent waste reports response: $response"
+                        )
+
+                        if (response.optString("status") == "OK") {
+                            val reportsArray =
+                                response.optJSONArray("reports")
+
+                            val loadedReports =
+                                mutableListOf<WasteReport>()
+
+                            if (reportsArray != null) {
+                                for (i in 0 until reportsArray.length()) {
+                                    val item =
+                                        reportsArray.optJSONObject(i)
+                                            ?: continue
+
+                                    val reportId =
+                                        item.optString("report_id", "")
+
+                                    loadedReports.add(
+                                        WasteReport(
+                                            reportId = "#$reportId",
+                                            resident = item.optString(
+                                                "resident_name",
+                                                "Unknown Resident"
+                                            ),
+                                            category = item.optString(
+                                                "report_type",
+                                                "Unknown"
+                                            ),
+                                            location = item.optString(
+                                                "location_details",
+                                                "Location unavailable"
+                                            ),
+                                            date = item.optString(
+                                                "created_at",
+                                                ""
+                                            ),
+                                            assignedTo = item.optString(
+                                                "assigned_collector_name",
+                                                "—"
+                                            ).ifBlank { "—" },
+                                            status = item.optString(
+                                                "status",
+                                                "Pending"
+                                            )
+                                        )
+                                    )
+                                }
+                            }
+
+                            recentWasteReports.value = loadedReports
+
+                            Log.d(
+                                "ECO_TRACK",
+                                "Loaded ${loadedReports.size} recent waste reports"
+                            )
+                        } else {
+                            recentWasteReports.value = emptyList()
+                            reportsError.value = response.optString(
+                                "message",
+                                "Unable to load waste reports."
+                            )
+                        }
+                    } catch (e: Exception) {
+                        Log.e(
+                            "ECO_TRACK",
+                            "Recent waste reports request failed",
+                            e
+                        )
+
+                        recentWasteReports.value = emptyList()
+                        reportsError.value = e.message
+                            ?: "Unable to load waste reports."
+                    } finally {
+                        reportsLoading.value = false
+                    }
+
                 } else {
                     Log.e(
                         "ECO_TRACK",
@@ -253,6 +369,9 @@ fun AppNavigation() {
 
                     dashboardStatistics.value = null
                     statisticsError.value = "Please log in again."
+
+                    recentWasteReports.value = emptyList()
+                    reportsError.value = "Please log in again."
                 }
             }
 
@@ -265,6 +384,11 @@ fun AppNavigation() {
                 dashboardStatistics = dashboardStatistics.value,
                 statisticsLoading = statisticsLoading.value,
                 statisticsError = statisticsError.value,
+
+                recentWasteReports = recentWasteReports.value,
+                reportsLoading = reportsLoading.value,
+                reportsError = reportsError.value,
+
                 onViewAllClick = {
                     navController.navigate(Routes.WASTE_REPORT)
                 },
@@ -298,6 +422,7 @@ fun AppNavigation() {
         // WASTE REPORT
         composable(Routes.WASTE_REPORT) {
             WasteReportScreen(
+                accessToken = accessToken.value,
                 onNotificationClick = {
                     navController.navigate(Routes.NOTIFICATIONS)
                 },
@@ -321,15 +446,6 @@ fun AppNavigation() {
                 },
                 onWasteGuideClick = {
                     navController.navigate(Routes.WASTE_GUIDE)
-                },
-                onReviewClick = {
-                    // Existing review popup placeholder.
-                },
-                onAssignClick = {
-                    // Existing assign popup placeholder.
-                },
-                onViewClick = {
-                    // Existing view popup placeholder.
                 }
             )
         }
@@ -337,6 +453,7 @@ fun AppNavigation() {
         // COLLECTORS
         composable(Routes.COLLECTORS) {
             CollectorsScreen(
+                accessToken = accessToken.value,
                 onNotificationClick = {
                     navController.navigate(Routes.NOTIFICATIONS)
                 },
@@ -367,6 +484,7 @@ fun AppNavigation() {
         // RESIDENTS
         composable(Routes.RESIDENTS) {
             ResidentsScreen(
+                accessToken = accessToken.value,
                 onNotificationClick = {
                     navController.navigate(Routes.NOTIFICATIONS)
                 },
@@ -397,6 +515,7 @@ fun AppNavigation() {
         // SCHEDULE
         composable(Routes.SCHEDULE) {
             ScheduleScreen(
+                accessToken = accessToken.value,
                 onNotificationClick = {
                     navController.navigate(Routes.NOTIFICATIONS)
                 },
@@ -427,6 +546,7 @@ fun AppNavigation() {
         // ANALYTICS
         composable(Routes.ANALYTICS) {
             AnalyticsScreen(
+                accessToken = accessToken.value,
                 onNotificationClick = {
                     navController.navigate(Routes.NOTIFICATIONS)
                 },
@@ -457,6 +577,7 @@ fun AppNavigation() {
         // WASTE GUIDE
         composable(Routes.WASTE_GUIDE) {
             WasteGuideScreen(
+                accessToken = accessToken.value,
                 onNotificationClick = {
                     navController.navigate(Routes.NOTIFICATIONS)
                 },
@@ -472,6 +593,9 @@ fun AppNavigation() {
                 onCollectorsClick = {
                     navController.navigate(Routes.COLLECTORS)
                 },
+                onResidentsClick = {
+                    navController.navigate(Routes.RESIDENTS)
+                },
                 onScheduleClick = {
                     navController.navigate(Routes.SCHEDULE)
                 },
@@ -484,6 +608,8 @@ fun AppNavigation() {
         // NOTIFICATIONS
         composable(Routes.NOTIFICATIONS) {
             NotificationsScreen(
+                accessToken = accessToken.value,
+
                 onDashboardClick = {
                     navController.navigate(Routes.DASHBOARD)
                 },
@@ -517,6 +643,8 @@ fun AppNavigation() {
         // MY PROFILE
         composable(Routes.PROFILE) {
             ProfileScreen(
+                accessToken = accessToken.value,
+
                 onDashboardClick = {
                     navController.navigate(Routes.DASHBOARD)
                 },
@@ -540,6 +668,26 @@ fun AppNavigation() {
                 },
                 onNotificationClick = {
                     navController.navigate(Routes.NOTIFICATIONS)
+                },
+
+                // LOG OUT
+                onLogoutClick = {
+                    // Clear the current app session
+                    accessToken.value = ""
+
+                    // Clear data loaded for the previous admin session
+                    dashboardStatistics.value = null
+                    statisticsError.value = ""
+                    recentWasteReports.value = emptyList()
+                    reportsError.value = ""
+
+                    // Return to Sign In and remove protected screens
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(navController.graph.id) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
                 }
             )
         }

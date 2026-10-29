@@ -1,3 +1,4 @@
+
 package edp.app.ecotrack.screens.schedule
 
 import android.app.TimePickerDialog
@@ -5,30 +6,21 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
@@ -42,15 +34,15 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,10 +51,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import edp.app.ecotrack.network.ApiClient
+import kotlinx.coroutines.launch
+import org.json.JSONArray
 import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.TextStyle as DateTextStyle
 import java.util.Calendar
 import java.util.Locale
 
@@ -81,7 +80,8 @@ private val LightBorder = Color(0xFFD5E8D9)
 private val DeleteRed = Color(0xFFE05D69)
 
 // ============================================================
-// SCHEDULE MODEL
+// MODEL
+// Keep collectorId temporarily for existing ApiClient signatures.
 // ============================================================
 
 data class CollectionSchedule(
@@ -89,7 +89,8 @@ data class CollectionSchedule(
     val barangayArea: String,
     val collectionDays: List<String>,
     val collectionStartTime: String,
-    val collectorId: String
+    val collectorId: String = "",
+    val groupId: String = ""
 )
 
 // ============================================================
@@ -98,6 +99,7 @@ data class CollectionSchedule(
 
 @Composable
 fun ScheduleScreen(
+    accessToken: String,
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onDashboardClick: () -> Unit = {},
@@ -108,37 +110,98 @@ fun ScheduleScreen(
     onWasteGuideClick: () -> Unit = {},
     hasUnreadNotifications: Boolean = true
 ) {
+    val scope = rememberCoroutineScope()
+
     var schedules by remember {
-        mutableStateOf(
-            listOf(
-                CollectionSchedule(
-                    id = "SCH-001",
-                    barangayArea = "Brgy. Area A",
-                    collectionDays = listOf("Mon", "Wed", "Fri"),
-                    collectionStartTime = "08:00 AM",
-                    collectorId = "COL-001"
-                ),
-                CollectionSchedule(
-                    id = "SCH-002",
-                    barangayArea = "Brgy. Area B",
-                    collectionDays = listOf("Tue", "Thu", "Sat"),
-                    collectionStartTime = "09:00 AM",
-                    collectorId = "COL-002"
-                ),
-                CollectionSchedule(
-                    id = "SCH-003",
-                    barangayArea = "Brgy. Area C",
-                    collectionDays = listOf("Mon", "Tue", "Thu"),
-                    collectionStartTime = "07:30 AM",
-                    collectorId = "COL-003"
-                )
-            )
-        )
+        mutableStateOf<List<CollectionSchedule>>(emptyList())
     }
+    var isLoading by remember { mutableStateOf(true) }
+    var isSaving by remember { mutableStateOf(false) }
+    var scheduleMessage by remember { mutableStateOf("") }
 
     var showAddSchedule by remember { mutableStateOf(false) }
-    var scheduleToEdit by remember { mutableStateOf<CollectionSchedule?>(null) }
-    var scheduleToDelete by remember { mutableStateOf<CollectionSchedule?>(null) }
+    var scheduleToEdit by remember {
+        mutableStateOf<CollectionSchedule?>(null)
+    }
+    var scheduleToDelete by remember {
+        mutableStateOf<CollectionSchedule?>(null)
+    }
+
+    suspend fun loadSchedules() {
+        if (accessToken.isBlank()) {
+            scheduleMessage = "Please log in again to load schedules."
+            isLoading = false
+            return
+        }
+
+        isLoading = true
+
+        try {
+            val response = ApiClient.getSchedules(accessToken)
+            val array = response.optJSONArray("schedules")
+                ?: response.optJSONArray("data")
+                ?: JSONArray()
+
+            val loaded = mutableListOf<CollectionSchedule>()
+
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+
+                val groupId = item.optString("schedule_group_id", "")
+                    .takeIf { it.isNotBlank() }
+                    ?: item.optString("group_id", "")
+                        .takeIf { it.isNotBlank() }
+                    ?: item.optString("id", "")
+
+                val zone = item.optString(
+                    "barangay_name",
+                    item.optString(
+                        "barangay",
+                        item.optString("barangay_area", "")
+                    )
+                )
+
+                val rawDays = item.optJSONArray("collection_days")
+                val days = if (rawDays != null) {
+                    (0 until rawDays.length())
+                        .map { rawDays.optString(it) }
+                        .filter { it.isNotBlank() }
+                } else {
+                    item.optString("collection_days", "")
+                        .split(",")
+                        .map { it.trim() }
+                        .filter { it.isNotBlank() }
+                }
+
+                val time = item.optString(
+                    "collection_time",
+                    item.optString("collection_start_time", "08:00")
+                )
+
+                loaded.add(
+                    CollectionSchedule(
+                        id = "SCH-${(index + 1).toString().padStart(3, '0')}",
+                        barangayArea = zone,
+                        collectionDays = days,
+                        collectionStartTime = time.toDisplayTime(),
+                        collectorId = item.optString("collector_id", ""),
+                        groupId = groupId
+                    )
+                )
+            }
+
+            schedules = loaded
+            scheduleMessage = ""
+        } catch (e: Exception) {
+            scheduleMessage = e.message ?: "Unable to load schedules."
+        } finally {
+            isLoading = false
+        }
+    }
+
+    LaunchedEffect(accessToken) {
+        loadSchedules()
+    }
 
     Row(
         modifier = Modifier
@@ -159,7 +222,6 @@ fun ScheduleScreen(
                 .fillMaxHeight()
                 .weight(1f)
         ) {
-            // TOP BAR
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -168,28 +230,22 @@ fun ScheduleScreen(
                     .padding(horizontal = 25.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = "Menu",
-                    tint = EcoDarkGreen,
-                    modifier = Modifier.size(23.dp)
-                )
 
-                Spacer(modifier = Modifier.width(15.dp))
+                Spacer(Modifier.width(15.dp))
 
                 Text(
-                    text = "Schedules",
+                    "Schedules",
                     color = EcoDarkGreen,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium
                 )
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(Modifier.weight(1f))
 
                 Box(contentAlignment = Alignment.TopEnd) {
                     IconButton(onClick = onNotificationClick) {
                         Icon(
-                            imageVector = Icons.Default.Notifications,
+                            Icons.Default.Notifications,
                             contentDescription = "Notifications",
                             tint = Color.Black,
                             modifier = Modifier.size(23.dp)
@@ -198,7 +254,7 @@ fun ScheduleScreen(
 
                     if (hasUnreadNotifications) {
                         Box(
-                            modifier = Modifier
+                            Modifier
                                 .padding(top = 8.dp, end = 8.dp)
                                 .size(6.dp)
                                 .clip(CircleShape)
@@ -209,7 +265,7 @@ fun ScheduleScreen(
 
                 IconButton(onClick = onProfileClick) {
                     Icon(
-                        imageVector = Icons.Default.AccountCircle,
+                        Icons.Default.AccountCircle,
                         contentDescription = "My Profile",
                         tint = EcoDarkGreen,
                         modifier = Modifier.size(31.dp)
@@ -217,7 +273,6 @@ fun ScheduleScreen(
                 }
             }
 
-            // MAIN CONTENT
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -228,16 +283,17 @@ fun ScheduleScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Collection Schedules",
+                        "Collection Schedules",
                         color = TextGreen,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Medium
                     )
 
-                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(Modifier.weight(1f))
 
                     Button(
                         onClick = { showAddSchedule = true },
+                        enabled = !isSaving,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = EcoGreen
                         ),
@@ -246,30 +302,57 @@ fun ScheduleScreen(
                         contentPadding = PaddingValues(horizontal = 12.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Add,
+                            Icons.Default.Add,
                             contentDescription = null,
                             modifier = Modifier.size(15.dp)
                         )
+                        Spacer(Modifier.width(4.dp))
+                        Text("Add Schedule", fontSize = 10.sp)
+                    }
+                }
 
-                        Spacer(modifier = Modifier.width(4.dp))
+                Spacer(Modifier.height(10.dp))
 
+                if (scheduleMessage.isNotBlank()) {
+                    Text(
+                        scheduleMessage,
+                        color = DeleteRed,
+                        fontSize = 12.sp
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                if (isLoading || isSaving) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            color = EcoGreen,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(10.dp))
                         Text(
-                            text = "Add Schedule",
-                            fontSize = 10.sp
+                            if (isLoading) "Loading schedules..." else "Saving schedule...",
+                            color = TextGreen,
+                            fontSize = 12.sp
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(Modifier.height(8.dp))
 
-                // TABLE
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
                     color = White,
                     shadowElevation = 4.dp
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.fillMaxWidth()) {
                         ScheduleTableHeader()
 
                         LazyColumn(
@@ -277,66 +360,139 @@ fun ScheduleScreen(
                                 .fillMaxWidth()
                                 .height(260.dp)
                         ) {
-                            items(
-                                items = schedules,
-                                key = { it.id }
-                            ) { schedule ->
+                            items(schedules, key = { it.id }) { schedule ->
                                 ScheduleRow(
                                     schedule = schedule,
-                                    onEdit = {
-                                        scheduleToEdit = schedule
-                                    },
-                                    onDelete = {
-                                        scheduleToDelete = schedule
-                                    }
+                                    onEdit = { scheduleToEdit = schedule },
+                                    onDelete = { scheduleToDelete = schedule }
                                 )
                             }
                         }
                     }
                 }
+
+                if (!isLoading && schedules.isEmpty() &&
+                    scheduleMessage.isBlank()
+                ) {
+                    Text(
+                        "No schedules found.",
+                        color = TextGreen,
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }
 
-    // ADD SCHEDULE POPUP
     if (showAddSchedule) {
         AddSchedulePopup(
-            onDismiss = { showAddSchedule = false },
+            onDismiss = {
+                if (!isSaving) showAddSchedule = false
+            },
             onCreate = { newSchedule ->
-                schedules = schedules + newSchedule
-                showAddSchedule = false
+                scope.launch {
+                    isSaving = true
+                    scheduleMessage = ""
+
+                    try {
+                        ApiClient.addScheduleGroup(
+                            accessToken = accessToken,
+                            barangayName = newSchedule.barangayArea,
+                            collectionDays = newSchedule.collectionDays,
+                            collectionTime = newSchedule.collectionStartTime,
+                            collectorId = ""
+                        )
+
+                        loadSchedules()
+                        showAddSchedule = false
+                    } catch (e: Exception) {
+                        scheduleMessage =
+                            e.message ?: "Unable to create schedule."
+                    } finally {
+                        isSaving = false
+                    }
+                }
             }
         )
     }
 
-    // EDIT SCHEDULE POPUP
     scheduleToEdit?.let { schedule ->
         EditSchedulePopup(
             schedule = schedule,
-            onDismiss = { scheduleToEdit = null },
-            onSave = { updatedSchedule ->
-                schedules = schedules.map {
-                    if (it.id == updatedSchedule.id) {
-                        updatedSchedule
-                    } else {
-                        it
+            onDismiss = {
+                if (!isSaving) scheduleToEdit = null
+            },
+            onSave = { updated ->
+                scope.launch {
+                    if (schedule.groupId.isBlank()) {
+                        scheduleMessage =
+                            "Missing schedule group ID. Reload the schedules first."
+                        return@launch
+                    }
+
+                    isSaving = true
+                    scheduleMessage = ""
+
+                    try {
+                        ApiClient.updateScheduleGroup(
+                            accessToken = accessToken,
+                            scheduleGroupId = schedule.groupId,
+                            barangayName = updated.barangayArea,
+                            collectionDays = updated.collectionDays,
+                            collectionTime = updated.collectionStartTime,
+                            collectorId = ""
+                        )
+
+                        loadSchedules()
+                        scheduleToEdit = null
+                    } catch (e: Exception) {
+                        scheduleMessage =
+                            e.message ?: "Unable to update schedule."
+                    } finally {
+                        isSaving = false
                     }
                 }
-                scheduleToEdit = null
             }
         )
     }
 
-    // DELETE CONFIRMATION
     scheduleToDelete?.let { schedule ->
         DeleteScheduleConfirmation(
             schedule = schedule,
-            onDismiss = { scheduleToDelete = null },
+            onDismiss = {
+                if (!isSaving) scheduleToDelete = null
+            },
             onConfirm = {
-                schedules = schedules.filter {
-                    it.id != schedule.id
+                scope.launch {
+                    if (schedule.groupId.isBlank()) {
+                        scheduleMessage =
+                            "Missing schedule group ID. Reload the schedules first."
+                        scheduleToDelete = null
+                        return@launch
+                    }
+
+                    isSaving = true
+                    scheduleMessage = ""
+
+                    try {
+                        ApiClient.deleteScheduleGroup(
+                            accessToken = accessToken,
+                            scheduleGroupId = schedule.groupId
+                        )
+
+                        loadSchedules()
+                        scheduleToDelete = null
+                    } catch (e: Exception) {
+                        scheduleMessage =
+                            e.message ?: "Unable to delete schedule."
+                    } finally {
+                        isSaving = false
+                    }
                 }
-                scheduleToDelete = null
             }
         )
     }
@@ -370,7 +526,7 @@ private fun ScheduleSidebar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "♧EcoTrack",
+                "♧EcoTrack",
                 color = White,
                 fontSize = 19.sp,
                 fontWeight = FontWeight.Medium
@@ -383,84 +539,31 @@ private fun ScheduleSidebar(
                 .border(1.dp, Color(0xFF4A8A50))
                 .padding(horizontal = 18.dp, vertical = 12.dp)
         ) {
+            Text("ADMINISTRATOR", color = Color(0xFF9FD6A5), fontSize = 11.sp)
+            Spacer(Modifier.height(6.dp))
             Text(
-                text = "ADMINISTRATOR",
-                color = Color(0xFF9FD6A5),
-                fontSize = 11.sp
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = "System Admin",
+                "System Admin",
                 color = White,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium
             )
-
             Text(
-                text = "admin@ecotrack.gov.ph",
+                "admin@ecotrack.gov.ph",
                 color = Color(0xFFB9DDBD),
                 fontSize = 10.sp
             )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        ScheduleSidebarItem(
-            icon = Icons.Default.GridView,
-            text = "Dashboard",
-            selected = false,
-            onClick = onDashboardClick
-        )
-
-        ScheduleSidebarItem(
-            icon = Icons.Default.Description,
-            text = "Waste Report",
-            selected = false,
-            onClick = onWasteReportClick
-        )
-
-        ScheduleSidebarItem(
-            icon = Icons.Default.LocalShipping,
-            text = "Collectors",
-            selected = false,
-            onClick = onCollectorsClick
-        )
-
-        ScheduleSidebarItem(
-            icon = Icons.Default.Groups,
-            text = "Residents",
-            selected = false,
-            onClick = onResidentsClick
-        )
-
-        ScheduleSidebarItem(
-            icon = Icons.Default.CalendarMonth,
-            text = "Schedules",
-            selected = true,
-            onClick = {}
-        )
-
-        ScheduleSidebarItem(
-            icon = Icons.Default.BarChart,
-            text = "Analytics",
-            selected = false,
-            onClick = onAnalyticsClick
-        )
-
-        ScheduleSidebarItem(
-            icon = Icons.Default.MenuBook,
-            text = "Waste Guide",
-            selected = false,
-            onClick = onWasteGuideClick
-        )
+        Spacer(Modifier.height(20.dp))
+        ScheduleSidebarItem(Icons.Default.GridView, "Dashboard", false, onDashboardClick)
+        ScheduleSidebarItem(Icons.Default.Description, "Waste Report", false, onWasteReportClick)
+        ScheduleSidebarItem(Icons.Default.LocalShipping, "Collectors", false, onCollectorsClick)
+        ScheduleSidebarItem(Icons.Default.Groups, "Residents", false, onResidentsClick)
+        ScheduleSidebarItem(Icons.Default.CalendarMonth, "Schedules", true, {})
+        ScheduleSidebarItem(Icons.Default.BarChart, "Analytics", false, onAnalyticsClick)
+        ScheduleSidebarItem(Icons.Default.MenuBook, "Waste Guide", false, onWasteGuideClick)
     }
 }
-
-// ============================================================
-// SIDEBAR ITEM
-// ============================================================
 
 @Composable
 private fun ScheduleSidebarItem(
@@ -475,32 +578,21 @@ private fun ScheduleSidebarItem(
             .padding(horizontal = 15.dp, vertical = 4.dp)
             .height(42.dp)
             .background(
-                color = if (selected) SelectedGreen else Color.Transparent,
-                shape = RoundedCornerShape(22.dp)
+                if (selected) SelectedGreen else Color.Transparent,
+                RoundedCornerShape(22.dp)
             )
             .clickable { onClick() }
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = text,
-            tint = White,
-            modifier = Modifier.size(19.dp)
-        )
-
-        Spacer(modifier = Modifier.width(14.dp))
-
-        Text(
-            text = text,
-            color = White,
-            fontSize = 13.sp
-        )
+        Icon(icon, contentDescription = text, tint = White, modifier = Modifier.size(19.dp))
+        Spacer(Modifier.width(14.dp))
+        Text(text, color = White, fontSize = 13.sp)
     }
 }
 
 // ============================================================
-// TABLE HEADER
+// TABLE - COLLECTOR ID REMOVED
 // ============================================================
 
 @Composable
@@ -513,34 +605,24 @@ private fun ScheduleTableHeader() {
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        ScheduleHeaderCell("SCHEDULE ID", 0.12f)
-        ScheduleHeaderCell("BARANGAY / AREA", 0.22f)
-        ScheduleHeaderCell("COLLECTION DAYS", 0.25f)
-        ScheduleHeaderCell("START TIME", 0.16f)
-        ScheduleHeaderCell("COLLECTOR ID", 0.13f)
-        ScheduleHeaderCell("ACTION", 0.12f)
+        ScheduleHeaderCell("SCHEDULE ID", 0.15f)
+        ScheduleHeaderCell("ZONE", 0.20f)
+        ScheduleHeaderCell("COLLECTION DAYS", 0.29f)
+        ScheduleHeaderCell("START TIME", 0.18f)
+        ScheduleHeaderCell("ACTION", 0.18f)
     }
 }
 
 @Composable
-private fun RowScope.ScheduleHeaderCell(
-    text: String,
-    weight: Float
-) {
+private fun RowScope.ScheduleHeaderCell(text: String, weight: Float) {
     Text(
         text = text,
         color = EcoDarkGreen,
         fontSize = 12.sp,
         fontWeight = FontWeight.Medium,
-        modifier = Modifier
-            .weight(weight)
-            .padding(end = 4.dp)
+        modifier = Modifier.weight(weight).padding(end = 4.dp)
     )
 }
-
-// ============================================================
-// SCHEDULE ROW
-// ============================================================
 
 @Composable
 private fun ScheduleRow(
@@ -548,6 +630,8 @@ private fun ScheduleRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var showMoreDates by remember(schedule.id) { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -556,65 +640,102 @@ private fun ScheduleRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = schedule.id,
+            schedule.id,
             color = TextGreen,
             fontSize = 12.sp,
-            modifier = Modifier.weight(0.12f)
+            modifier = Modifier.weight(0.15f)
         )
 
         Text(
-            text = schedule.barangayArea,
+            schedule.barangayArea,
             color = TextGreen,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            modifier = Modifier.weight(0.22f)
+            modifier = Modifier.weight(0.20f)
         )
 
         Row(
-            modifier = Modifier.weight(0.25f),
+            modifier = Modifier.weight(0.29f),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            schedule.collectionDays.forEach { day ->
-                DayMiniBadge(text = day)
+            schedule.collectionDays.take(4).forEach {
+                DayMiniBadge(it.toCalendarBadge())
+            }
+
+            val remaining = schedule.collectionDays.drop(4)
+            if (remaining.isNotEmpty()) {
+                Box {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFFE5F4E8))
+                            .clickable { showMoreDates = true }
+                            .padding(horizontal = 6.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            "+${remaining.size}",
+                            color = EcoGreen,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showMoreDates,
+                        onDismissRequest = { showMoreDates = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "Collection Dates",
+                                    fontWeight = FontWeight.Bold,
+                                    color = EcoDarkGreen
+                                )
+                            },
+                            onClick = { showMoreDates = false }
+                        )
+
+                        remaining.forEach { date ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        date.toCalendarBadge(),
+                                        color = TextGreen,
+                                        fontSize = 13.sp
+                                    )
+                                },
+                                onClick = { showMoreDates = false }
+                            )
+                        }
+                    }
+                }
             }
         }
 
         Text(
-            text = schedule.collectionStartTime,
+            schedule.collectionStartTime,
             color = TextGreen,
             fontSize = 12.sp,
-            modifier = Modifier.weight(0.16f)
-        )
-
-        Text(
-            text = schedule.collectorId,
-            color = TextGreen,
-            fontSize = 12.sp,
-            modifier = Modifier.weight(0.13f)
+            modifier = Modifier.weight(0.18f)
         )
 
         Row(
-            modifier = Modifier.weight(0.12f),
+            modifier = Modifier.weight(0.18f),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            IconButton(
-                onClick = onEdit,
-                modifier = Modifier.size(28.dp)
-            ) {
+            IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
                 Icon(
-                    imageVector = Icons.Default.Edit,
+                    Icons.Default.Edit,
                     contentDescription = "Edit Schedule",
                     tint = EcoGreen,
                     modifier = Modifier.size(14.dp)
                 )
             }
 
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier.size(28.dp)
-            ) {
+            IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
                 Icon(
-                    imageVector = Icons.Default.Delete,
+                    Icons.Default.Delete,
                     contentDescription = "Delete Schedule",
                     tint = DeleteRed,
                     modifier = Modifier.size(14.dp)
@@ -623,10 +744,6 @@ private fun ScheduleRow(
         }
     }
 }
-
-// ============================================================
-// DAY MINI BADGE
-// ============================================================
 
 @Composable
 private fun DayMiniBadge(text: String) {
@@ -637,16 +754,176 @@ private fun DayMiniBadge(text: String) {
             .padding(horizontal = 5.dp, vertical = 3.dp)
     ) {
         Text(
-            text = text,
+            text,
             color = EcoGreen,
-            fontSize = 12.sp,
+            fontSize = 10.sp,
             fontWeight = FontWeight.Bold
         )
     }
 }
 
 // ============================================================
-// ADD SCHEDULE POPUP
+// CALENDAR - MULTI-DATE SELECTION + CLEAR MONTH
+// ============================================================
+
+@Composable
+private fun CompactCollectionCalendar(
+    selectedDates: Set<String>,
+    onDatesChange: (Set<String>) -> Unit
+) {
+    val firstSelectedDate = selectedDates
+        .mapNotNull { runCatching { LocalDate.parse(it) }.getOrNull() }
+        .minOrNull()
+
+    var displayedMonth by remember {
+        mutableStateOf(firstSelectedDate?.let { YearMonth.from(it) } ?: YearMonth.now())
+    }
+
+    LaunchedEffect(selectedDates) {
+        if (firstSelectedDate != null) {
+            displayedMonth = YearMonth.from(firstSelectedDate)
+        }
+    }
+
+    val weekdays = listOf("S", "M", "T", "W", "T", "F", "S")
+    val startOffset = displayedMonth.atDay(1).dayOfWeek.value % 7
+    val daysInMonth = displayedMonth.lengthOfMonth()
+    val totalCells = ((startOffset + daysInMonth + 6) / 7) * 7
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFFF8FBF8))
+            .border(1.dp, LightBorder, RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                displayedMonth.month.getDisplayName(DateTextStyle.FULL, Locale.ENGLISH) +
+                        " ${displayedMonth.year}",
+                color = EcoDarkGreen,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+
+            IconButton(
+                onClick = { displayedMonth = displayedMonth.minusMonths(1) },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(Icons.Default.ChevronLeft, "Previous month", tint = EcoGreen)
+            }
+
+            IconButton(
+                onClick = { displayedMonth = displayedMonth.plusMonths(1) },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(Icons.Default.ChevronRight, "Next month", tint = EcoGreen)
+            }
+        }
+
+        Row(Modifier.fillMaxWidth()) {
+            weekdays.forEachIndexed { index, day ->
+                Box(
+                    modifier = Modifier.weight(1f).height(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        day,
+                        color = if (index == 0 || index == 6) EcoGreen else Color.Gray,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        for (week in 0 until totalCells / 7) {
+            Row(Modifier.fillMaxWidth()) {
+                for (column in 0..6) {
+                    val cellIndex = week * 7 + column
+                    val dayNumber = cellIndex - startOffset + 1
+
+                    Box(
+                        modifier = Modifier.weight(1f).height(34.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (dayNumber in 1..daysInMonth) {
+                            val dateKey = displayedMonth.atDay(dayNumber).toString()
+                            val isSelected = dateKey in selectedDates
+
+                            Box(
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isSelected) EcoGreen else Color.Transparent
+                                    )
+                                    .clickable {
+                                        val updated = selectedDates.toMutableSet()
+                                        if (isSelected) {
+                                            updated.remove(dateKey)
+                                        } else {
+                                            updated.add(dateKey)
+                                        }
+                                        onDatesChange(updated)
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    dayNumber.toString(),
+                                    color = if (isSelected) White else Color(0xFF263238),
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) {
+                                        FontWeight.Bold
+                                    } else {
+                                        FontWeight.Normal
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(7.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "${selectedDates.size} dates selected",
+                color = Color(0xFF455A64),
+                fontSize = 12.sp,
+                modifier = Modifier.weight(1f)
+            )
+
+            TextButton(
+                onClick = {
+                    onDatesChange(
+                        selectedDates.filterNot { value ->
+                            runCatching {
+                                YearMonth.from(LocalDate.parse(value)) == displayedMonth
+                            }.getOrDefault(false)
+                        }.toSet()
+                    )
+                },
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+            ) {
+                Text("Clear Month", color = EcoGreen, fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+// ============================================================
+// ADD SCHEDULE POPUP - NO COLLECTOR SELECTION
 // ============================================================
 
 @Composable
@@ -654,197 +931,79 @@ private fun AddSchedulePopup(
     onDismiss: () -> Unit,
     onCreate: (CollectionSchedule) -> Unit
 ) {
-    var barangay by remember { mutableStateOf("") }
-    var selectedDays by remember { mutableStateOf(setOf("Mon")) }
+    var zone by remember { mutableStateOf("") }
+    var selectedDates by remember { mutableStateOf<Set<String>>(emptySet()) }
     var startTime by remember { mutableStateOf("08:00 AM") }
-    var collectorId by remember { mutableStateOf("COL-001") }
-
-    val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            modifier = Modifier
-                .width(475.dp)
-                .height(515.dp),
+            modifier = Modifier.width(475.dp).heightIn(max = 720.dp),
             shape = RoundedCornerShape(18.dp),
             color = White,
             shadowElevation = 10.dp
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 15.dp)
+                    .fillMaxWidth()
+                    .heightIn(max = 720.dp)
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
-                // TITLE AND CLOSE BUTTON
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                PopupTitle(
+                    title = "Add New Schedule",
+                    subtitle = "Create a new collection schedule.",
+                    onDismiss = onDismiss
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "SCHEDULE",
-                            color = EcoGreen,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                    ScheduleFieldLabel("Zone")
+                    Spacer(Modifier.height(6.dp))
+                    ZoneDropdown(zone) { zone = it }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
+                    ScheduleFieldLabel("Collection Days")
+                    Spacer(Modifier.height(6.dp))
+                    CompactCollectionCalendar(
+                        selectedDates = selectedDates,
+                        onDatesChange = { selectedDates = it }
+                    )
 
-                        Text(
-                            text = "Add New Schedule",
-                            color = TextGreen,
-                            fontSize = 21.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(34.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
-                            tint = TextGreen,
-                            modifier = Modifier.size(21.dp)
-                        )
-                    }
+                    Spacer(Modifier.height(10.dp))
+                    ScheduleFieldLabel("Collection Start Time")
+                    Spacer(Modifier.height(6.dp))
+                    ScheduleTimePicker(startTime) { startTime = it }
                 }
 
-                Spacer(modifier = Modifier.height(5.dp))
+                Spacer(Modifier.height(12.dp))
 
-                Text(
-                    text = "Create a new collection schedule.",
-                    color = Color(0xFF6F9875),
-                    fontSize = 12.sp
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // BARANGAY / AREA
-                ScheduleFieldLabel("Barangay / Area")
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                ScheduleValueBox(
-                    value = barangay,
-                    onValueChange = { barangay = it }
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // COLLECTION DAYS
-                ScheduleFieldLabel("Collection Days")
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    days.forEach { day ->
-                        DaySelectionButton(
-                            text = day,
-                            selected = day in selectedDays,
-                            onClick = {
-                                selectedDays =
-                                    if (day in selectedDays) {
-                                        selectedDays - day
-                                    } else {
-                                        selectedDays + day
-                                    }
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // COLLECTION START TIME
-                ScheduleFieldLabel("Collection Start Time")
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                ScheduleTimePicker(
-                    value = startTime,
-                    onTimeSelected = { startTime = it }
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // COLLECTOR ID
-                ScheduleFieldLabel("Collector ID")
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                QuickAddCollectors(
-                    selectedCollectorId = collectorId,
-                    onCollectorSelected = { collectorId = it }
-                )
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // CANCEL AND CREATE BUTTONS
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(9.dp)
                 ) {
-                    Button(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(38.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = White,
-                            contentColor = EcoGreen
-                        ),
-                        border = BorderStroke(1.dp, EcoGreen),
-                        shape = RoundedCornerShape(20.dp),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Text(
-                            text = "Cancel",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    FormButton(
+                        text = "Cancel",
+                        outlined = true,
+                        modifier = Modifier.weight(1f)
+                    ) { onDismiss() }
 
-                    Button(
-                        onClick = {
-                            if (
-                                barangay.isNotBlank() &&
-                                selectedDays.isNotEmpty()
-                            ) {
-                                val newSchedule = CollectionSchedule(
-                                    id = generateScheduleId(),
-                                    barangayArea = barangay.trim(),
-                                    collectionDays = days.filter {
-                                        it in selectedDays
-                                    },
-                                    collectionStartTime = startTime,
-                                    collectorId = collectorId
-                                )
-
-                                onCreate(newSchedule)
-                            }
-                        },
-                        enabled = barangay.isNotBlank() &&
-                                selectedDays.isNotEmpty(),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(38.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = EcoGreen,
-                            disabledContainerColor = Color(0xFFE3E3E3),
-                            disabledContentColor = Color(0xFFB4B4B4)
-                        ),
-                        shape = RoundedCornerShape(20.dp),
-                        contentPadding = PaddingValues(0.dp)
+                    FormButton(
+                        text = "Create Schedule",
+                        modifier = Modifier.weight(1f),
+                        enabled = zone.isNotBlank() && selectedDates.isNotEmpty()
                     ) {
-                        Text(
-                            text = "Create Schedule",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
+                        onCreate(
+                            CollectionSchedule(
+                                id = generateScheduleId(),
+                                barangayArea = zone,
+                                collectionDays = selectedDates.sorted(),
+                                collectionStartTime = startTime,
+                                collectorId = ""
+                            )
                         )
                     }
                 }
@@ -854,7 +1013,7 @@ private fun AddSchedulePopup(
 }
 
 // ============================================================
-// EDIT SCHEDULE POPUP
+// EDIT SCHEDULE POPUP - NO COLLECTOR SELECTION
 // ============================================================
 
 @Composable
@@ -863,207 +1022,91 @@ private fun EditSchedulePopup(
     onDismiss: () -> Unit,
     onSave: (CollectionSchedule) -> Unit
 ) {
-    var barangay by remember(schedule.id) {
+    var zone by remember(schedule.id) {
         mutableStateOf(schedule.barangayArea)
     }
 
-    var selectedDays by remember(schedule.id) {
-        mutableStateOf(schedule.collectionDays.toSet())
+    var selectedDates by remember(schedule.groupId) {
+        mutableStateOf(
+            schedule.collectionDays
+                .map { it.trim() }
+                .filter { it.isIsoDate() }
+                .toSet()
+        )
     }
 
     var startTime by remember(schedule.id) {
         mutableStateOf(schedule.collectionStartTime)
     }
 
-    var collectorId by remember(schedule.id) {
-        mutableStateOf(schedule.collectorId)
-    }
-
-    val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            modifier = Modifier
-                .width(475.dp)
-                .height(515.dp),
+            modifier = Modifier.width(475.dp).heightIn(max = 720.dp),
             shape = RoundedCornerShape(18.dp),
             color = White,
             shadowElevation = 10.dp
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 15.dp)
+                    .fillMaxWidth()
+                    .heightIn(max = 720.dp)
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
-                // TITLE AND CLOSE BUTTON
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                PopupTitle(
+                    title = "Edit Schedule",
+                    subtitle = "Update the collection schedule details.",
+                    onDismiss = onDismiss,
+                    label = schedule.id
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = schedule.id,
-                            color = EcoGreen,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                    ScheduleFieldLabel("Zone")
+                    Spacer(Modifier.height(6.dp))
+                    ZoneDropdown(zone) { zone = it }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
+                    ScheduleFieldLabel("Collection Days")
+                    Spacer(Modifier.height(6.dp))
+                    CompactCollectionCalendar(
+                        selectedDates = selectedDates,
+                        onDatesChange = { selectedDates = it }
+                    )
 
-                        Text(
-                            text = "Edit Schedule",
-                            color = TextGreen,
-                            fontSize = 21.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(34.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
-                            tint = TextGreen,
-                            modifier = Modifier.size(21.dp)
-                        )
-                    }
+                    Spacer(Modifier.height(10.dp))
+                    ScheduleFieldLabel("Collection Start Time")
+                    Spacer(Modifier.height(6.dp))
+                    ScheduleTimePicker(startTime) { startTime = it }
                 }
 
-                Spacer(modifier = Modifier.height(5.dp))
+                Spacer(Modifier.height(12.dp))
 
-                Text(
-                    text = "Update the collection schedule details.",
-                    color = Color(0xFF6F9875),
-                    fontSize = 12.sp
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // BARANGAY / AREA
-                ScheduleFieldLabel("Barangay / Area")
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                ScheduleValueBox(
-                    value = barangay,
-                    onValueChange = { barangay = it }
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // COLLECTION DAYS
-                ScheduleFieldLabel("Collection Days")
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    days.forEach { day ->
-                        DaySelectionButton(
-                            text = day,
-                            selected = day in selectedDays,
-                            onClick = {
-                                selectedDays =
-                                    if (day in selectedDays) {
-                                        selectedDays - day
-                                    } else {
-                                        selectedDays + day
-                                    }
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // COLLECTION START TIME
-                ScheduleFieldLabel("Collection Start Time")
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                ScheduleTimePicker(
-                    value = startTime,
-                    onTimeSelected = { startTime = it }
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // COLLECTOR ID
-                ScheduleFieldLabel("Collector ID")
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                QuickAddCollectors(
-                    selectedCollectorId = collectorId,
-                    onCollectorSelected = { collectorId = it }
-                )
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // CANCEL AND SAVE CHANGES
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(9.dp)
                 ) {
-                    Button(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(38.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = White,
-                            contentColor = EcoGreen
-                        ),
-                        border = BorderStroke(1.dp, EcoGreen),
-                        shape = RoundedCornerShape(20.dp),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Text(
-                            text = "Cancel",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    FormButton(
+                        text = "Cancel",
+                        outlined = true,
+                        modifier = Modifier.weight(1f)
+                    ) { onDismiss() }
 
-                    Button(
-                        onClick = {
-                            if (
-                                barangay.isNotBlank() &&
-                                selectedDays.isNotEmpty()
-                            ) {
-                                val updated = schedule.copy(
-                                    barangayArea = barangay.trim(),
-                                    collectionDays = days.filter {
-                                        it in selectedDays
-                                    },
-                                    collectionStartTime = startTime,
-                                    collectorId = collectorId
-                                )
-
-                                onSave(updated)
-                            }
-                        },
-                        enabled = barangay.isNotBlank() &&
-                                selectedDays.isNotEmpty(),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(38.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = EcoGreen,
-                            disabledContainerColor = Color(0xFFE3E3E3),
-                            disabledContentColor = Color(0xFFB4B4B4)
-                        ),
-                        shape = RoundedCornerShape(20.dp),
-                        contentPadding = PaddingValues(0.dp)
+                    FormButton(
+                        text = "Save Changes",
+                        modifier = Modifier.weight(1f),
+                        enabled = zone.isNotBlank() && selectedDates.isNotEmpty()
                     ) {
-                        Text(
-                            text = "Save Changes",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
+                        onSave(
+                            schedule.copy(
+                                barangayArea = zone.trim(),
+                                collectionDays = selectedDates.sorted(),
+                                collectionStartTime = startTime
+                            )
                         )
                     }
                 }
@@ -1073,85 +1116,118 @@ private fun EditSchedulePopup(
 }
 
 // ============================================================
-// QUICK-ADD ACTIVE COLLECTORS
+// SHARED POPUP HEADER AND BUTTONS
 // ============================================================
 
 @Composable
-private fun QuickAddCollectors(
-    selectedCollectorId: String,
-    onCollectorSelected: (String) -> Unit
+private fun PopupTitle(
+    title: String,
+    subtitle: String,
+    onDismiss: () -> Unit,
+    label: String = "SCHEDULE"
 ) {
-    val collectors = listOf(
-        "COL-001" to "Lito",
-        "COL-002" to "Carlos",
-        "COL-003" to "Ramon"
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(15.dp))
-            .background(Color(0xFFF0FAF2))
-            .border(
-                width = 1.dp,
-                color = Color(0xFFCFEFD5),
-                shape = RoundedCornerShape(15.dp)
-            )
-            .padding(horizontal = 11.dp, vertical = 9.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "Quick-add active collectors",
-            color = EcoGreen,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold
-        )
+        Column(Modifier.weight(1f)) {
+            Text(label, color = EcoGreen, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(5.dp))
+            Text(title, color = TextGreen, fontSize = 21.sp, fontWeight = FontWeight.Bold)
+        }
 
-        Spacer(modifier = Modifier.height(7.dp))
+        IconButton(onClick = onDismiss, modifier = Modifier.size(34.dp)) {
+            Icon(Icons.Default.Close, "Close", tint = TextGreen)
+        }
+    }
 
+    Spacer(Modifier.height(4.dp))
+    Text(subtitle, color = Color(0xFF6F9875), fontSize = 12.sp)
+}
+
+@Composable
+private fun FormButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    outlined: Boolean = false,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.height(38.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (outlined) White else EcoGreen,
+            contentColor = if (outlined) EcoGreen else White,
+            disabledContainerColor = Color(0xFFE3E3E3),
+            disabledContentColor = Color(0xFF888888)
+        ),
+        border = if (outlined) BorderStroke(1.dp, EcoGreen) else null,
+        shape = RoundedCornerShape(20.dp),
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Text(text, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+// ============================================================
+// ZONE DROPDOWN: ZONE 1 TO ZONE 10
+// ============================================================
+
+@Composable
+private fun ZoneDropdown(
+    selectedZone: String,
+    onZoneSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val zones = (1..10).map { "Zone $it" }
+
+    Box {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(36.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFFF8FBF8))
+                .border(1.dp, LightBorder, RoundedCornerShape(8.dp))
+                .clickable { expanded = true }
+                .padding(horizontal = 11.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            collectors.forEach { (id, name) ->
-                val isSelected = selectedCollectorId == id
+            Text(
+                selectedZone.ifBlank { "Select Zone" },
+                color = if (selectedZone.isBlank()) Color.Gray else TextGreen,
+                fontSize = 10.sp,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = "Select Zone",
+                tint = EcoGreen,
+                modifier = Modifier.size(18.dp)
+            )
+        }
 
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50.dp))
-                        .background(
-                            if (isSelected) Color(0xFF08A849) else White
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = if (isSelected) {
-                                Color(0xFF08A849)
-                            } else {
-                                Color(0xFFA8DDB4)
-                            },
-                            shape = RoundedCornerShape(50.dp)
-                        )
-                        .clickable { onCollectorSelected(id) }
-                        .padding(horizontal = 9.dp, vertical = 5.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "$id · $name",
-                        color = if (isSelected) White else EcoGreen,
-                        fontSize = 9.sp,
-                        fontWeight = if (isSelected) {
-                            FontWeight.Bold
-                        } else {
-                            FontWeight.Normal
-                        }
-                    )
-                }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            zones.forEach { zone ->
+                DropdownMenuItem(
+                    text = { Text(zone, color = TextGreen) },
+                    onClick = {
+                        onZoneSelected(zone)
+                        expanded = false
+                    }
+                )
             }
         }
     }
 }
 
 // ============================================================
-// DELETE SCHEDULE CONFIRMATION
+// DELETE CONFIRMATION
 // ============================================================
 
 @Composable
@@ -1161,25 +1237,21 @@ private fun DeleteScheduleConfirmation(
     onConfirm: () -> Unit
 ) {
     AlertDialog(
-        modifier = Modifier
-            .width(480.dp)
-            .height(220.dp),
+        modifier = Modifier.width(480.dp),
         onDismissRequest = onDismiss,
         containerColor = White,
         shape = RoundedCornerShape(18.dp),
         title = {
             Column {
                 Text(
-                    text = "${schedule.id} - ${schedule.barangayArea}",
+                    "${schedule.id} - ${schedule.barangayArea}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = DeleteRed
                 )
-
-                Spacer(modifier = Modifier.height(5.dp))
-
+                Spacer(Modifier.height(5.dp))
                 Text(
-                    text = "Delete Schedule",
+                    "Delete Schedule",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextGreen
@@ -1188,7 +1260,7 @@ private fun DeleteScheduleConfirmation(
         },
         text = {
             Text(
-                text = "Are you sure you want to delete this schedule?",
+                "Are you sure you want to delete this schedule?",
                 color = Color(0xFF5D6F61),
                 fontSize = 12.sp
             )
@@ -1196,7 +1268,7 @@ private fun DeleteScheduleConfirmation(
         confirmButton = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
@@ -1206,33 +1278,19 @@ private fun DeleteScheduleConfirmation(
                         contentColor = EcoGreen
                     ),
                     border = BorderStroke(1.dp, EcoGreen),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.height(36.dp),
-                    contentPadding = PaddingValues(horizontal = 82.dp)
+                    shape = RoundedCornerShape(20.dp)
                 ) {
-                    Text(
-                        text = "Cancel",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text("Cancel", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(Modifier.width(8.dp))
 
                 Button(
                     onClick = onConfirm,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = DeleteRed
-                    ),
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.height(36.dp),
-                    contentPadding = PaddingValues(horizontal = 82.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = DeleteRed),
+                    shape = RoundedCornerShape(20.dp)
                 ) {
-                    Text(
-                        text = "Delete",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text("Delete", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
         },
@@ -1241,22 +1299,18 @@ private fun DeleteScheduleConfirmation(
 }
 
 // ============================================================
-// SCHEDULE FIELD LABEL
+// FORM FIELDS
 // ============================================================
 
 @Composable
 private fun ScheduleFieldLabel(text: String) {
     Text(
-        text = text,
+        text,
         color = TextGreen,
         fontSize = 12.sp,
         fontWeight = FontWeight.Medium
     )
 }
-
-// ============================================================
-// EDITABLE BARANGAY / AREA FIELD
-// ============================================================
 
 @Composable
 private fun ScheduleValueBox(
@@ -1269,11 +1323,7 @@ private fun ScheduleValueBox(
             .height(36.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Color(0xFFF8FBF8))
-            .border(
-                width = 1.dp,
-                color = LightBorder,
-                shape = RoundedCornerShape(8.dp)
-            )
+            .border(1.dp, LightBorder, RoundedCornerShape(8.dp))
             .padding(horizontal = 11.dp),
         contentAlignment = Alignment.CenterStart
     ) {
@@ -1281,21 +1331,13 @@ private fun ScheduleValueBox(
             value = value,
             onValueChange = onValueChange,
             singleLine = true,
-            textStyle = TextStyle(
-                color = TextGreen,
-                fontSize = 10.sp
-            ),
+            textStyle = TextStyle(color = TextGreen, fontSize = 10.sp),
             modifier = Modifier.fillMaxWidth(),
             decorationBox = { innerTextField ->
                 Box {
                     if (value.isEmpty()) {
-                        Text(
-                            text = "Enter barangay / area",
-                            color = Color.Gray,
-                            fontSize = 10.sp
-                        )
+                        Text("Enter zone", color = Color.Gray, fontSize = 10.sp)
                     }
-
                     innerTextField()
                 }
             }
@@ -1304,43 +1346,7 @@ private fun ScheduleValueBox(
 }
 
 // ============================================================
-// DAY SELECTION BUTTON
-// ============================================================
-
-@Composable
-private fun RowScope.DaySelectionButton(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .weight(1f)
-            .height(32.dp)
-            .clip(RoundedCornerShape(7.dp))
-            .background(
-                if (selected) EcoGreen else Color(0xFFF8FBF8)
-            )
-            .border(
-                width = 1.dp,
-                color = if (selected) EcoGreen else LightBorder,
-                shape = RoundedCornerShape(7.dp)
-            )
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            color = if (selected) White else TextGreen,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-// ============================================================
-// COLLECTION START TIME PICKER
-// REAL ANDROID TIME PICKER
+// TIME PICKER
 // ============================================================
 
 @Composable
@@ -1356,43 +1362,30 @@ private fun ScheduleTimePicker(
             .height(36.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Color(0xFFF8FBF8))
-            .border(
-                width = 1.dp,
-                color = LightBorder,
-                shape = RoundedCornerShape(8.dp)
-            )
+            .border(1.dp, LightBorder, RoundedCornerShape(8.dp))
             .clickable {
                 val calendar = Calendar.getInstance()
 
-                val parsedDate = runCatching {
-                    SimpleDateFormat(
-                        "hh:mm a",
-                        Locale.US
-                    ).parse(value)
+                val parsed = runCatching {
+                    SimpleDateFormat("hh:mm a", Locale.US).parse(value)
                 }.getOrNull()
 
-                if (parsedDate != null) {
-                    calendar.time = parsedDate
-                }
-
-                val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
-                val currentMinute = calendar.get(Calendar.MINUTE)
+                if (parsed != null) calendar.time = parsed
 
                 TimePickerDialog(
                     context,
                     { _, hourOfDay, minute ->
-                        val formattedTime = String.format(
+                        val formatted = String.format(
                             Locale.US,
                             "%02d:%02d %s",
                             if (hourOfDay % 12 == 0) 12 else hourOfDay % 12,
                             minute,
                             if (hourOfDay < 12) "AM" else "PM"
                         )
-
-                        onTimeSelected(formattedTime)
+                        onTimeSelected(formatted)
                     },
-                    currentHour,
-                    currentMinute,
+                    calendar.get(Calendar.HOUR_OF_DAY),
+                    calendar.get(Calendar.MINUTE),
                     false
                 ).show()
             }
@@ -1404,28 +1397,56 @@ private fun ScheduleTimePicker(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = value.ifBlank { "Select collection time" },
+                value.ifBlank { "Select collection time" },
                 color = if (value.isBlank()) Color.Gray else TextGreen,
                 fontSize = 10.sp,
                 modifier = Modifier.weight(1f)
             )
-
-            Text(
-                text = "🕒",
-                fontSize = 12.sp
-            )
+            Text("🕒", fontSize = 12.sp)
         }
     }
 }
 
 // ============================================================
-// GENERATE SCHEDULE ID
+// HELPERS
 // ============================================================
 
 private fun generateScheduleId(): String {
-    return "SCH-${
-        System.currentTimeMillis()
-            .toString()
-            .takeLast(3)
-    }"
+    return "SCH-${System.currentTimeMillis().toString().takeLast(3)}"
+}
+
+private fun String.isIsoDate(): Boolean {
+    return runCatching {
+        LocalDate.parse(trim())
+        true
+    }.getOrDefault(false)
+}
+
+private fun String.toCalendarBadge(): String {
+    return runCatching {
+        val date = LocalDate.parse(trim())
+        "${date.month.getDisplayName(DateTextStyle.SHORT, Locale.ENGLISH)} ${date.dayOfMonth}"
+    }.getOrDefault(trim())
+}
+
+private fun String.toDisplayTime(): String {
+    val formats = listOf(
+        "hh:mm a",
+        "h:mm a",
+        "HH:mm:ss",
+        "HH:mm",
+        "hh:mm:ss a"
+    )
+
+    for (format in formats) {
+        val parsed = runCatching {
+            SimpleDateFormat(format, Locale.US).parse(trim())
+        }.getOrNull()
+
+        if (parsed != null) {
+            return SimpleDateFormat("hh:mm a", Locale.US).format(parsed)
+        }
+    }
+
+    return this
 }

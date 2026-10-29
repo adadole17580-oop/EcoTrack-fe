@@ -35,6 +35,9 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.MenuBook
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -101,7 +104,12 @@ fun DashboardScreen(
     onResidentsClick: () -> Unit = {},
     onSchedulesClick: () -> Unit = {},
     onAnalyticsClick: () -> Unit = {},
-    onWasteGuideClick: () -> Unit = {}
+    onWasteGuideClick: () -> Unit = {},
+
+    // Recent waste reports from the backend
+    recentWasteReports: List<WasteReport> = emptyList(),
+    reportsLoading: Boolean = false,
+    reportsError: String = ""
 ) {
     // Expected API response:
     // {
@@ -298,7 +306,11 @@ fun DashboardScreen(
                 // -------------------------------------------------
 
                 item {
+                    // RECENT WASTE REPORTS
                     RecentWasteReports(
+                        reports = recentWasteReports.take(5),
+                        loading = reportsLoading,
+                        error = reportsError,
                         onViewAllClick = onViewAllClick,
                         onViewClick = { report ->
                             selectedReport = report
@@ -508,12 +520,6 @@ private fun DashboardTopBar(
             .padding(horizontal = 25.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = Icons.Default.Menu,
-            contentDescription = "Menu",
-            tint = EcoDarkGreen,
-            modifier = Modifier.size(23.dp)
-        )
 
         Spacer(modifier = Modifier.width(15.dp))
 
@@ -628,15 +634,18 @@ private fun StatisticCard(
 // Existing sample data preserved.
 // ---------------------------------------------------------
 
+
 @Composable
 private fun RecentWasteReports(
+    reports: List<WasteReport>,
+    loading: Boolean,
+    error: String,
     onViewAllClick: () -> Unit,
     onViewClick: (WasteReport) -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(265.dp)
             .shadow(
                 elevation = 3.dp,
                 shape = RoundedCornerShape(14.dp)
@@ -697,134 +706,186 @@ private fun RecentWasteReports(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "REPORT\nID",
+                    text = "REPORT ID",
                     modifier = Modifier.weight(0.8f),
                     color = EcoGreen,
-                    fontSize = 12.sp
+                    fontSize = 11.sp
                 )
 
                 Text(
                     text = "RESIDENT",
                     modifier = Modifier.weight(1.8f),
                     color = EcoGreen,
-                    fontSize = 12.sp
+                    fontSize = 11.sp
                 )
 
                 Text(
                     text = "CATEGORY",
                     modifier = Modifier.weight(1.7f),
                     color = EcoGreen,
-                    fontSize = 12.sp
+                    fontSize = 11.sp
                 )
 
                 Text(
                     text = "STATUS",
-                    modifier = Modifier.weight(1.2f),
+                    modifier = Modifier.weight(1.4f),
                     color = EcoGreen,
-                    fontSize = 12.sp
+                    fontSize = 11.sp
                 )
 
                 Text(
                     text = "ACTION",
-                    modifier = Modifier.weight(0.9f),
+                    modifier = Modifier.weight(0.8f),
                     color = EcoGreen,
-                    fontSize = 12.sp
+                    fontSize = 11.sp
                 )
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = 20.dp,
-                        vertical = 13.dp
-                    ),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "#1024",
-                    modifier = Modifier.weight(0.8f),
-                    color = EcoTextGreen,
-                    fontSize = 12.sp
-                )
-
-                Column(
-                    modifier = Modifier.weight(1.8f)
-                ) {
+            when {
+                loading -> {
                     Text(
-                        text = "Angel Dadole",
+                        text = "Loading recent waste reports...",
                         color = EcoTextGreen,
-                        fontSize = 12.sp
-                    )
-
-                    Text(
-                        text = "⌖ Campu, CDOC",
-                        color = Color(0xFF58BE78),
-                        fontSize = 12.sp
+                        fontSize = 13.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp)
                     )
                 }
 
-                Text(
-                    text = "Overflowing Garbage",
-                    modifier = Modifier.weight(1.7f),
-                    color = EcoTextGreen,
-                    fontSize = 12.sp
-                )
-
-                Box(
-                    modifier = Modifier.weight(1.2f)
-                ) {
+                error.isNotBlank() -> {
                     Text(
-                        text = "For Verification",
-                        color = Color(0xFFE97878),
+                        text = "Unable to load reports: $error",
+                        color = Color(0xFFB3261E),
                         fontSize = 12.sp,
                         modifier = Modifier
-                            .background(
-                                color = Color(0xFFFFD5D5),
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .padding(
-                                horizontal = 8.dp,
-                                vertical = 4.dp
-                            )
+                            .fillMaxWidth()
+                            .padding(20.dp)
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .weight(0.9f)
-                        .clickable {
-                            onViewClick(
-                                WasteReport(
-                                    reportId = "#1024",
-                                    resident = "Angel Dadole",
-                                    category = "Overflowing Garbage",
-                                    location = "Campu, CDOC",
-                                    date = "December 28, 2005",
-                                    assignedTo = "Carlos Mendoza",
-                                    status = "For Verification"
+                reports.isEmpty() -> {
+                    Text(
+                        text = "No waste reports available.",
+                        color = Color.Gray,
+                        fontSize = 13.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp)
+                    )
+                }
+
+                else -> {
+                    reports.forEach { report ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    horizontal = 20.dp,
+                                    vertical = 13.dp
+                                ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = report.reportId,
+                                modifier = Modifier.weight(0.8f),
+                                color = EcoTextGreen,
+                                fontSize = 11.sp
+                            )
+
+                            Column(
+                                modifier = Modifier.weight(1.8f)
+                            ) {
+                                Text(
+                                    text = report.resident,
+                                    color = EcoTextGreen,
+                                    fontSize = 11.sp
                                 )
+
+                                Text(
+                                    text = report.location,
+                                    color = Color(0xFF58BE78),
+                                    fontSize = 10.sp,
+                                    maxLines = 2
+                                )
+                            }
+
+                            Text(
+                                text = report.category,
+                                modifier = Modifier.weight(1.7f),
+                                color = EcoTextGreen,
+                                fontSize = 11.sp,
+                                maxLines = 2
                             )
-                        },
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Text(
-                        text = "View",
-                        color = EcoGreen,
-                        fontSize = 12.sp,
-                        modifier = Modifier
-                            .border(
-                                width = 1.dp,
-                                color = EcoGreen,
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .padding(
-                                horizontal = 10.dp,
-                                vertical = 4.dp
-                            )
-                    )
+
+                            Box(
+                                modifier = Modifier.weight(1.4f)
+                            ) {
+                                val statusColor = when (
+                                    report.status.trim().lowercase()
+                                ) {
+                                    "resolved", "completed" ->
+                                        Color(0xFF286B32)
+
+                                    "for verification",
+                                    "waiting for verification" ->
+                                        Color(0xFFE97838)
+
+                                    "in progress" ->
+                                        Color(0xFF287DB5)
+
+                                    else ->
+                                        Color(0xFFC49B22)
+                                }
+
+                                Text(
+                                    text = report.status,
+                                    color = statusColor,
+                                    fontSize = 10.sp,
+                                    maxLines = 2,
+                                    modifier = Modifier
+                                        .background(
+                                            color = statusColor.copy(
+                                                alpha = 0.12f
+                                            ),
+                                            shape = RoundedCornerShape(10.dp)
+                                        )
+                                        .padding(
+                                            horizontal = 7.dp,
+                                            vertical = 4.dp
+                                        )
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(0.8f)
+                                    .clickable {
+                                        onViewClick(report)
+                                    },
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                Text(
+                                    text = "View",
+                                    color = EcoGreen,
+                                    fontSize = 11.sp,
+                                    modifier = Modifier
+                                        .border(
+                                            width = 1.dp,
+                                            color = EcoGreen,
+                                            shape = RoundedCornerShape(10.dp)
+                                        )
+                                        .padding(
+                                            horizontal = 9.dp,
+                                            vertical = 4.dp
+                                        )
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
+

@@ -1,24 +1,13 @@
+
 package edp.app.ecotrack.screens.waste_guide
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -43,12 +32,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,34 +45,35 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import edp.app.ecotrack.network.ApiClient
+import kotlinx.coroutines.launch
 
 // ============================================================
-// COLORS - SAME AS DASHBOARD
+// COLORS
 // ============================================================
 
 private val EcoDarkGreen = Color(0xFF216B2A)
 private val EcoGreen = Color(0xFF2E7D32)
 private val EcoLightGreen = Color(0xFFE6F5EA)
-private val EcoTopBar = Color(0xFFE0F2E5)
 private val EcoBorder = Color(0xFF8BE5A7)
 private val EcoTextGreen = Color(0xFF286B32)
 private val White = Color.White
 
-// ============================================================
-// CATEGORY COLORS
-// ============================================================
-
+// Biodegradable = Green
 private val BiodegradableBackground = Color(0xFFE5F8EA)
 private val BiodegradableText = Color(0xFF218A46)
 
-private val RecyclableBackground = Color(0xFFDDF5F8)
-private val RecyclableText = Color(0xFF168999)
+// Non-biodegradable = Yellow
+private val NonBiodegradableBackground = Color(0xFFFFF3C4)
+private val NonBiodegradableText = Color(0xFF9A7300)
 
-private val ResidualBackground = Color(0xFFF5EACD)
-private val ResidualText = Color(0xFFA57A19)
+// Hazardous = Red
+private val HazardousBackground = Color(0xFFF7DADA)
+private val HazardousText = Color(0xFFC24F56)
 
-private val InfectiousBackground = Color(0xFFF7DADA)
-private val InfectiousText = Color(0xFFC24F56)
+// Recyclable = Blue
+private val RecyclableBackground = Color(0xFFDCEBFF)
+private val RecyclableText = Color(0xFF2463B5)
 
 // ============================================================
 // MODEL
@@ -103,77 +89,27 @@ data class WasteGuideCategory(
 )
 
 // ============================================================
-// SAMPLE DATA
+// GARBAGE TYPE COLORS
 // ============================================================
 
-private fun sampleCategories(): List<WasteGuideCategory> {
+private fun getWasteTypeBackground(type: String): Color {
+    return when (type) {
+        "Biodegradable" -> BiodegradableBackground
+        "Non-biodegradable" -> NonBiodegradableBackground
+        "Hazardous" -> HazardousBackground
+        "Recyclable" -> RecyclableBackground
+        else -> EcoLightGreen
+    }
+}
 
-    return listOf(
-
-        WasteGuideCategory(
-            id = 1,
-            name = "Biodegradable",
-            colorTheme = "Biodegradable",
-            description =
-                "Waste materials that can naturally decompose and return to the environment.",
-            examples = listOf(
-                "Food scraps",
-                "Fruit and vegetable peels",
-                "Leaves",
-                "Garden waste"
-            ),
-            disposalTips =
-                "Separate biodegradable waste from other waste. Place food scraps and organic materials in the proper biodegradable container."
-        ),
-
-        WasteGuideCategory(
-            id = 2,
-            name = "Recyclable",
-            colorTheme = "Recyclable",
-            description =
-                "Materials that can be collected, processed, and used again to create new products.",
-            examples = listOf(
-                "Plastic bottles",
-                "Paper",
-                "Cardboard",
-                "Clean cans"
-            ),
-            disposalTips =
-                "Clean and dry recyclable materials before placing them in the recycling container."
-        ),
-
-        WasteGuideCategory(
-            id = 3,
-            name = "Residual",
-            colorTheme = "Residual",
-            description =
-                "Waste that cannot be composted or recycled and needs proper disposal.",
-            examples = listOf(
-                "Used tissue",
-                "Dirty wrappers",
-                "Styrofoam",
-                "Contaminated packaging"
-            ),
-            disposalTips =
-                "Place residual waste in the designated residual waste container and avoid mixing it with recyclable materials."
-        ),
-
-        WasteGuideCategory(
-            id = 4,
-            name = "Infectious",
-            colorTheme = "Infectious",
-            description =
-                "Waste that may contain harmful microorganisms and can cause infection or disease.",
-            examples = listOf(
-                "Used masks",
-                "Used gloves",
-                "Medical waste",
-                "Contaminated materials"
-            ),
-            disposalTips =
-                "Handle infectious waste carefully and place it in the designated container. Do not mix it with ordinary household waste."
-        )
-    )
+private fun getWasteTypeTextColor(type: String): Color {
+    return when (type) {
+        "Biodegradable" -> BiodegradableText
+        "Non-biodegradable" -> NonBiodegradableText
+        "Hazardous" -> HazardousText
+        "Recyclable" -> RecyclableText
+        else -> EcoGreen
+    }
 }
 
 // ============================================================
@@ -182,30 +118,28 @@ private fun sampleCategories(): List<WasteGuideCategory> {
 
 @Composable
 fun WasteGuideScreen(
+    accessToken: String,
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
-
     onDashboardClick: () -> Unit = {},
     onWasteReportClick: () -> Unit = {},
     onCollectorsClick: () -> Unit = {},
     onResidentsClick: () -> Unit = {},
     onScheduleClick: () -> Unit = {},
     onAnalyticsClick: () -> Unit = {},
-
     hasUnreadNotifications: Boolean = true,
-
     profileImageUrl: String? = null
 ) {
-
     val categories = remember {
-        mutableStateListOf(
-            *sampleCategories().toTypedArray()
-        )
+        mutableStateListOf<WasteGuideCategory>()
     }
 
-    var showAddDialog by remember {
-        mutableStateOf(false)
-    }
+    val scope = rememberCoroutineScope()
+
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    var showAddDialog by remember { mutableStateOf(false) }
 
     var editingCategory by remember {
         mutableStateOf<WasteGuideCategory?>(null)
@@ -215,16 +149,88 @@ fun WasteGuideScreen(
         mutableStateOf<WasteGuideCategory?>(null)
     }
 
+    // Pending Add/Edit confirmation
+    var pendingSaveCategory by remember {
+        mutableStateOf<WasteGuideCategory?>(null)
+    }
+
+    var pendingSaveIsEdit by remember {
+        mutableStateOf(false)
+    }
+
+    // ========================================================
+    // LOAD CATEGORIES FROM SUPABASE
+    // ========================================================
+
+    LaunchedEffect(accessToken) {
+        if (accessToken.isBlank()) {
+            errorMessage = "Please log in again."
+            return@LaunchedEffect
+        }
+
+        isLoading = true
+        errorMessage = null
+
+        try {
+            val response = ApiClient.getWasteGuide(accessToken)
+            val array = response.getJSONArray("categories")
+
+            categories.clear()
+
+            for (i in 0 until array.length()) {
+                val item = array.getJSONObject(i)
+                val wasteType = item.getString("waste_type")
+
+                val savedExamples = item.optJSONArray("examples")
+
+                val examplesList = buildList {
+                    if (savedExamples != null) {
+                        for (index in 0 until savedExamples.length()) {
+                            val example = savedExamples
+                                .optString(index)
+                                .trim()
+
+                            if (example.isNotEmpty()) {
+                                add(example)
+                            }
+                        }
+                    }
+                }
+
+                categories.add(
+                    WasteGuideCategory(
+                        id = item.getInt("guide_id"),
+                        name = wasteType,
+                        colorTheme = wasteType,
+                        description = item.optString(
+                            "description",
+                            ""
+                        ),
+                        examples = examplesList,
+                        disposalTips = item.optString(
+                            "disposal_method",
+                            ""
+                        )
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            errorMessage =
+                e.message ?: "Failed to load waste guide."
+        } finally {
+            isLoading = false
+        }
+    }
+
+    // ========================================================
+    // MAIN LAYOUT
+    // ========================================================
+
     Row(
         modifier = Modifier
             .fillMaxSize()
             .background(EcoLightGreen)
     ) {
-
-        // ====================================================
-        // SIDEBAR
-        // ====================================================
-
         WasteGuideSidebar(
             onDashboardClick = onDashboardClick,
             onWasteReportClick = onWasteReportClick,
@@ -234,16 +240,11 @@ fun WasteGuideScreen(
             onAnalyticsClick = onAnalyticsClick
         )
 
-        // ====================================================
-        // MAIN AREA
-        // ====================================================
-
         Column(
             modifier = Modifier
                 .fillMaxHeight()
                 .weight(1f)
         ) {
-
             WasteGuideTopBar(
                 onNotificationClick = onNotificationClick,
                 onProfileClick = onProfileClick
@@ -251,22 +252,34 @@ fun WasteGuideScreen(
 
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(
                         horizontal = 30.dp,
                         vertical = 18.dp
                     )
             ) {
+                if (isLoading) {
+                    Text(
+                        text = "Loading waste guide...",
+                        color = EcoDarkGreen,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
 
-                // =================================================
-                // TITLE + ADD BUTTON
-                // =================================================
+                errorMessage?.let { message ->
+                    Text(
+                        text = message,
+                        color = Color.Red,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     Text(
                         text = "Waste Segregation Guide",
                         color = EcoTextGreen,
@@ -277,15 +290,16 @@ fun WasteGuideScreen(
 
                     Button(
                         onClick = {
+                            errorMessage = null
                             showAddDialog = true
                         },
+                        enabled = !isLoading,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = EcoGreen
                         ),
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.height(40.dp)
                     ) {
-
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Add Category",
@@ -293,9 +307,7 @@ fun WasteGuideScreen(
                             modifier = Modifier.size(18.dp)
                         )
 
-                        Spacer(
-                            modifier = Modifier.width(6.dp)
-                        )
+                        Spacer(Modifier.width(6.dp))
 
                         Text(
                             text = "Add Category",
@@ -305,141 +317,232 @@ fun WasteGuideScreen(
                     }
                 }
 
-                Spacer(
-                    modifier = Modifier.height(16.dp)
-                )
+                Spacer(Modifier.height(16.dp))
 
-                // =================================================
-                // CATEGORY CARDS
-                // =================================================
-
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement =
-                        Arrangement.spacedBy(16.dp)
+                if (!isLoading && categories.isEmpty() &&
+                    errorMessage == null
                 ) {
+                    Text(
+                        text = "No waste categories found.",
+                        color = EcoTextGreen,
+                        fontSize = 13.sp
+                    )
+                }
 
-                    items(
-                        items = categories,
-                        key = { it.id }
-                    ) { category ->
+                categories.forEach { category ->
+                    WasteGuideCard(
+                        category = category,
+                        onEditClick = {
+                            errorMessage = null
+                            editingCategory = category
+                        },
+                        onDeleteClick = {
+                            errorMessage = null
+                            deletingCategory = category
+                        }
+                    )
 
-                        WasteGuideCard(
-                            category = category,
-
-                            onEditClick = {
-                                editingCategory = category
-                            },
-
-                            onDeleteClick = {
-                                deletingCategory = category
-                            }
-                        )
-                    }
+                    Spacer(Modifier.height(16.dp))
                 }
             }
         }
     }
 
-    // ==========================================================
-    // ADD CATEGORY
-    // ==========================================================
+    // ========================================================
+    // ADD CATEGORY EDITOR
+    // ========================================================
 
     if (showAddDialog) {
-
         WasteCategoryDialog(
             title = "Add Waste Category",
             initialCategory = null,
-
             dialogWidth = 500.dp,
-            dialogHeight = 500.dp,
-
+            dialogHeight = 650.dp,
             onDismiss = {
                 showAddDialog = false
             },
-
             onSave = { newCategory ->
-
-                val newId =
-                    (categories.maxOfOrNull {
-                        it.id
-                    } ?: 0) + 1
-
-                categories.add(
-                    newCategory.copy(
-                        id = newId
-                    )
-                )
-
-                showAddDialog = false
+                pendingSaveCategory = newCategory
+                pendingSaveIsEdit = false
             }
         )
     }
 
-    // ==========================================================
-    // EDIT CATEGORY
-    // ==========================================================
+    // ========================================================
+    // EDIT CATEGORY EDITOR
+    // ========================================================
 
     editingCategory?.let { category ->
-
         WasteCategoryDialog(
             title = "Edit - ${category.name}",
             initialCategory = category,
-
             dialogWidth = 500.dp,
             dialogHeight = 650.dp,
-
             onDismiss = {
                 editingCategory = null
             },
-
             onSave = { updatedCategory ->
-
-                val index =
-                    categories.indexOfFirst {
-                        it.id == category.id
-                    }
-
-                if (index >= 0) {
-
-                    categories[index] =
-                        updatedCategory.copy(
-                            id = category.id
-                        )
-                }
-
-                editingCategory = null
+                pendingSaveCategory = updatedCategory
+                pendingSaveIsEdit = true
             }
         )
     }
 
-    // ==========================================================
-    // DELETE CONFIRMATION
-    // ==========================================================
+    // ========================================================
+    // ADD / EDIT CONFIRMATION
+    // ========================================================
+
+    pendingSaveCategory?.let { pendingCategory ->
+        ConfirmWasteCategoryDialog(
+            isEdit = pendingSaveIsEdit,
+            categoryName = pendingCategory.name,
+            onDismiss = {
+                pendingSaveCategory = null
+            },
+            onConfirm = {
+                scope.launch {
+                    isLoading = true
+                    errorMessage = null
+
+                    try {
+                        val response = if (pendingSaveIsEdit) {
+                            val originalId =
+                                editingCategory?.id
+                                    ?: pendingCategory.id
+
+                            ApiClient.updateWasteGuideCategory(
+                                accessToken = accessToken,
+                                guideId = originalId,
+                                wasteType = pendingCategory.name,
+                                description = pendingCategory.description,
+                                disposalMethod = pendingCategory.disposalTips,
+                                examples = pendingCategory.examples
+                            )
+                        } else {
+                            ApiClient.addWasteGuideCategory(
+                                accessToken = accessToken,
+                                wasteType = pendingCategory.name,
+                                description = pendingCategory.description,
+                                disposalMethod = pendingCategory.disposalTips,
+                                examples = pendingCategory.examples
+                            )
+                        }
+
+                        val savedCategory =
+                            response.optJSONObject("category")
+                                ?: response
+
+                        val savedName =
+                            savedCategory.getString("waste_type")
+
+                        val savedExamplesArray =
+                            savedCategory.optJSONArray("examples")
+
+                        val savedExamples = buildList {
+                            if (savedExamplesArray != null) {
+                                for (index in 0 until
+                                        savedExamplesArray.length()
+                                ) {
+                                    val example =
+                                        savedExamplesArray
+                                            .optString(index)
+                                            .trim()
+
+                                    if (example.isNotEmpty()) {
+                                        add(example)
+                                    }
+                                }
+                            }
+                        }
+
+                        val savedItem = WasteGuideCategory(
+                            id = savedCategory.getInt("guide_id"),
+                            name = savedName,
+                            colorTheme = savedName,
+                            description = savedCategory.optString(
+                                "description",
+                                pendingCategory.description
+                            ),
+                            examples = savedExamples,
+                            disposalTips = savedCategory.optString(
+                                "disposal_method",
+                                pendingCategory.disposalTips
+                            )
+                        )
+
+                        if (pendingSaveIsEdit) {
+                            val index = categories.indexOfFirst {
+                                it.id == savedItem.id
+                            }
+
+                            if (index >= 0) {
+                                categories[index] = savedItem
+                            }
+                        } else {
+                            categories.add(savedItem)
+                        }
+
+                        pendingSaveCategory = null
+                        showAddDialog = false
+                        editingCategory = null
+                    } catch (e: Exception) {
+                        errorMessage =
+                            e.message ?: if (pendingSaveIsEdit) {
+                                "Failed to update waste category."
+                            } else {
+                                "Failed to add waste category."
+                            }
+
+                        pendingSaveCategory = null
+                    } finally {
+                        isLoading = false
+                    }
+                }
+            }
+        )
+    }
+
+    // ========================================================
+    // DELETE CATEGORY CONFIRMATION
+    // ========================================================
 
     deletingCategory?.let { category ->
-
         DeleteWasteCategoryDialog(
             categoryName = category.name,
-
             onDismiss = {
                 deletingCategory = null
             },
-
             onConfirm = {
+                scope.launch {
+                    isLoading = true
+                    errorMessage = null
 
-                categories.removeAll {
-                    it.id == category.id
+                    try {
+                        ApiClient.deleteWasteGuideCategory(
+                            accessToken = accessToken,
+                            guideId = category.id
+                        )
+
+                        categories.removeAll {
+                            it.id == category.id
+                        }
+
+                        deletingCategory = null
+                    } catch (e: Exception) {
+                        errorMessage =
+                            e.message ?: "Failed to delete waste category."
+                        deletingCategory = null
+                    } finally {
+                        isLoading = false
+                    }
                 }
-
-                deletingCategory = null
             }
         )
     }
 }
 
 // ============================================================
-// TOP BAR - SAME AS DASHBOARD
+// TOP BAR
 // ============================================================
 
 @Composable
@@ -447,17 +550,14 @@ private fun WasteGuideTopBar(
     onNotificationClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(62.dp)
             .background(Color(0xFFE0F2E5))
             .padding(horizontal = 25.dp),
-
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Icon(
             imageVector = Icons.Default.Menu,
             contentDescription = "Menu",
@@ -465,9 +565,7 @@ private fun WasteGuideTopBar(
             modifier = Modifier.size(23.dp)
         )
 
-        Spacer(
-            modifier = Modifier.width(15.dp)
-        )
+        Spacer(Modifier.width(15.dp))
 
         Text(
             text = "Waste Guide",
@@ -476,14 +574,9 @@ private fun WasteGuideTopBar(
             fontWeight = FontWeight.Medium
         )
 
-        Spacer(
-            modifier = Modifier.weight(1f)
-        )
+        Spacer(Modifier.weight(1f))
 
-        IconButton(
-            onClick = onNotificationClick
-        ) {
-
+        IconButton(onClick = onNotificationClick) {
             Icon(
                 imageVector = Icons.Default.Notifications,
                 contentDescription = "Notifications",
@@ -492,10 +585,7 @@ private fun WasteGuideTopBar(
             )
         }
 
-        IconButton(
-            onClick = onProfileClick
-        ) {
-
+        IconButton(onClick = onProfileClick) {
             Icon(
                 imageVector = Icons.Default.AccountCircle,
                 contentDescription = "My Profile",
@@ -507,7 +597,7 @@ private fun WasteGuideTopBar(
 }
 
 // ============================================================
-// SIDEBAR - SAME AS DASHBOARD
+// SIDEBAR
 // ============================================================
 
 @Composable
@@ -519,23 +609,19 @@ private fun WasteGuideSidebar(
     onScheduleClick: () -> Unit,
     onAnalyticsClick: () -> Unit
 ) {
-
     Column(
         modifier = Modifier
             .width(250.dp)
             .fillMaxHeight()
             .background(EcoDarkGreen)
     ) {
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(62.dp)
                 .padding(horizontal = 18.dp),
-
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Text(
                 text = "♧EcoTrack",
                 color = White,
@@ -547,25 +633,16 @@ private fun WasteGuideSidebar(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(
-                    width = 1.dp,
-                    color = Color(0xFF4A8A50)
-                )
-                .padding(
-                    horizontal = 18.dp,
-                    vertical = 12.dp
-                )
+                .border(1.dp, Color(0xFF4A8A50))
+                .padding(horizontal = 18.dp, vertical = 12.dp)
         ) {
-
             Text(
                 text = "ADMINISTRATOR",
                 color = Color(0xFF9FD6A5),
                 fontSize = 11.sp
             )
 
-            Spacer(
-                modifier = Modifier.height(6.dp)
-            )
+            Spacer(Modifier.height(6.dp))
 
             Text(
                 text = "System Admin",
@@ -581,63 +658,61 @@ private fun WasteGuideSidebar(
             )
         }
 
-        Spacer(
-            modifier = Modifier.height(20.dp)
+        Spacer(Modifier.height(20.dp))
+
+        WasteGuideSidebarItem(
+            Icons.Default.GridView,
+            "Dashboard",
+            false,
+            onDashboardClick
         )
 
         WasteGuideSidebarItem(
-            icon = Icons.Default.GridView,
-            text = "Dashboard",
-            selected = false,
-            onClick = onDashboardClick
+            Icons.Default.Description,
+            "Waste Report",
+            false,
+            onWasteReportClick
         )
 
         WasteGuideSidebarItem(
-            icon = Icons.Default.Description,
-            text = "Waste Report",
-            selected = false,
-            onClick = onWasteReportClick
+            Icons.Default.LocalShipping,
+            "Collectors",
+            false,
+            onCollectorsClick
         )
 
         WasteGuideSidebarItem(
-            icon = Icons.Default.LocalShipping,
-            text = "Collectors",
-            selected = false,
-            onClick = onCollectorsClick
+            Icons.Default.Groups,
+            "Residents",
+            false,
+            onResidentsClick
         )
 
         WasteGuideSidebarItem(
-            icon = Icons.Default.Groups,
-            text = "Residents",
-            selected = false,
-            onClick = onResidentsClick
+            Icons.Default.CalendarMonth,
+            "Schedules",
+            false,
+            onScheduleClick
         )
 
         WasteGuideSidebarItem(
-            icon = Icons.Default.CalendarMonth,
-            text = "Schedules",
-            selected = false,
-            onClick = onScheduleClick
+            Icons.Default.BarChart,
+            "Analytics",
+            false,
+            onAnalyticsClick
         )
 
         WasteGuideSidebarItem(
-            icon = Icons.Default.BarChart,
-            text = "Analytics",
-            selected = false,
-            onClick = onAnalyticsClick
-        )
-
-        WasteGuideSidebarItem(
-            icon = Icons.Default.MenuBook,
-            text = "Waste Guide",
-            selected = true,
-            onClick = {}
+            Icons.Default.MenuBook,
+            "Waste Guide",
+            true,
+            {}
         )
     }
 }
 
 // ============================================================
-// SIDEBAR ITEM - SAME AS DASHBOARD
+// SIDEBAR ITEM
 // ============================================================
 
 @Composable
@@ -647,34 +722,20 @@ private fun WasteGuideSidebarItem(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(
-                horizontal = 15.dp,
-                vertical = 4.dp
-            )
+            .padding(horizontal = 15.dp, vertical = 4.dp)
             .height(42.dp)
-            .clip(
-                RoundedCornerShape(22.dp)
-            )
+            .clip(RoundedCornerShape(22.dp))
             .background(
-                if (selected)
-                    Color(0xFF719873)
-                else
-                    Color.Transparent
+                if (selected) Color(0xFF719873)
+                else Color.Transparent
             )
-            .clickable {
-                onClick()
-            }
-            .padding(
-                horizontal = 18.dp
-            ),
-
+            .clickable { onClick() }
+            .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Icon(
             imageVector = icon,
             contentDescription = text,
@@ -682,9 +743,7 @@ private fun WasteGuideSidebarItem(
             modifier = Modifier.size(19.dp)
         )
 
-        Spacer(
-            modifier = Modifier.width(14.dp)
-        )
+        Spacer(Modifier.width(14.dp))
 
         Text(
             text = text,
@@ -704,44 +763,11 @@ private fun WasteGuideCard(
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
-
     val themeBackground =
-        when (category.colorTheme) {
-
-            "Biodegradable" ->
-                BiodegradableBackground
-
-            "Recyclable" ->
-                RecyclableBackground
-
-            "Residual" ->
-                ResidualBackground
-
-            "Infectious" ->
-                InfectiousBackground
-
-            else ->
-                EcoLightGreen
-        }
+        getWasteTypeBackground(category.name)
 
     val themeText =
-        when (category.colorTheme) {
-
-            "Biodegradable" ->
-                BiodegradableText
-
-            "Recyclable" ->
-                RecyclableText
-
-            "Residual" ->
-                ResidualText
-
-            "Infectious" ->
-                InfectiousText
-
-            else ->
-                EcoGreen
-        }
+        getWasteTypeTextColor(category.name)
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -749,28 +775,17 @@ private fun WasteGuideCard(
         color = White,
         shadowElevation = 4.dp
     ) {
-
-        Column(
-            modifier = Modifier.padding(18.dp)
-        ) {
-
+        Column(Modifier.padding(18.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Box(
                     modifier = Modifier
-                        .clip(
-                            RoundedCornerShape(8.dp)
-                        )
+                        .clip(RoundedCornerShape(8.dp))
                         .background(themeBackground)
-                        .padding(
-                            horizontal = 12.dp,
-                            vertical = 7.dp
-                        )
+                        .padding(horizontal = 12.dp, vertical = 7.dp)
                 ) {
-
                     Text(
                         text = category.name,
                         color = themeText,
@@ -779,20 +794,14 @@ private fun WasteGuideCard(
                     )
                 }
 
-                Spacer(
-                    modifier = Modifier.weight(1f)
-                )
+                Spacer(Modifier.weight(1f))
 
                 Row(
                     modifier = Modifier
-                        .clickable {
-                            onEditClick()
-                        }
+                        .clickable { onEditClick() }
                         .padding(6.dp),
-
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Edit",
@@ -800,9 +809,7 @@ private fun WasteGuideCard(
                         modifier = Modifier.size(17.dp)
                     )
 
-                    Spacer(
-                        modifier = Modifier.width(4.dp)
-                    )
+                    Spacer(Modifier.width(4.dp))
 
                     Text(
                         text = "Edit",
@@ -811,20 +818,14 @@ private fun WasteGuideCard(
                     )
                 }
 
-                Spacer(
-                    modifier = Modifier.width(8.dp)
-                )
+                Spacer(Modifier.width(8.dp))
 
                 Row(
                     modifier = Modifier
-                        .clickable {
-                            onDeleteClick()
-                        }
+                        .clickable { onDeleteClick() }
                         .padding(6.dp),
-
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete",
@@ -832,9 +833,7 @@ private fun WasteGuideCard(
                         modifier = Modifier.size(17.dp)
                     )
 
-                    Spacer(
-                        modifier = Modifier.width(4.dp)
-                    )
+                    Spacer(Modifier.width(4.dp))
 
                     Text(
                         text = "Delete",
@@ -844,9 +843,7 @@ private fun WasteGuideCard(
                 }
             }
 
-            Spacer(
-                modifier = Modifier.height(10.dp)
-            )
+            Spacer(Modifier.height(10.dp))
 
             Text(
                 text = category.description,
@@ -855,9 +852,7 @@ private fun WasteGuideCard(
                 lineHeight = 18.sp
             )
 
-            Spacer(
-                modifier = Modifier.height(10.dp)
-            )
+            Spacer(Modifier.height(10.dp))
 
             Text(
                 text = "Examples",
@@ -866,39 +861,35 @@ private fun WasteGuideCard(
                 fontWeight = FontWeight.Medium
             )
 
-            Spacer(
-                modifier = Modifier.height(5.dp)
-            )
+            Spacer(Modifier.height(5.dp))
 
-            category.examples.forEach { example ->
+            if (category.examples.isEmpty()) {
+                Text(
+                    text = "No examples added yet.",
+                    color = Color.Gray,
+                    fontSize = 12.sp
+                )
+            } else {
+                category.examples.forEach { example ->
+                    Row(Modifier.padding(vertical = 2.dp)) {
+                        Text(
+                            text = "•",
+                            color = themeText,
+                            fontSize = 13.sp
+                        )
 
-                Row(
-                    modifier = Modifier.padding(
-                        vertical = 2.dp
-                    )
-                ) {
+                        Spacer(Modifier.width(6.dp))
 
-                    Text(
-                        text = "•",
-                        color = themeText,
-                        fontSize = 13.sp
-                    )
-
-                    Spacer(
-                        modifier = Modifier.width(6.dp)
-                    )
-
-                    Text(
-                        text = example,
-                        color = EcoTextGreen,
-                        fontSize = 12.sp
-                    )
+                        Text(
+                            text = example,
+                            color = EcoTextGreen,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             }
 
-            Spacer(
-                modifier = Modifier.height(8.dp)
-            )
+            Spacer(Modifier.height(8.dp))
 
             Text(
                 text = "Disposal Tips for Residents",
@@ -907,9 +898,7 @@ private fun WasteGuideCard(
                 fontWeight = FontWeight.Medium
             )
 
-            Spacer(
-                modifier = Modifier.height(4.dp)
-            )
+            Spacer(Modifier.height(4.dp))
 
             Text(
                 text = category.disposalTips,
@@ -934,48 +923,42 @@ private fun WasteCategoryDialog(
     onDismiss: () -> Unit,
     onSave: (WasteGuideCategory) -> Unit
 ) {
+    val wasteTypes = listOf(
+        "Biodegradable",
+        "Non-biodegradable",
+        "Hazardous",
+        "Recyclable"
+    )
 
-    var categoryName by remember {
+    var selectedTheme by remember(initialCategory?.id) {
         mutableStateOf(
-            initialCategory?.name ?: ""
+            initialCategory?.name ?: "Biodegradable"
         )
     }
 
-    var selectedTheme by remember {
-        mutableStateOf(
-            initialCategory?.colorTheme
-                ?: "Biodegradable"
-        )
+    var description by remember(initialCategory?.id) {
+        mutableStateOf(initialCategory?.description ?: "")
     }
 
-    var description by remember {
-        mutableStateOf(
-            initialCategory?.description ?: ""
-        )
+    var disposalTips by remember(initialCategory?.id) {
+        mutableStateOf(initialCategory?.disposalTips ?: "")
     }
 
-    var disposalTips by remember {
-        mutableStateOf(
-            initialCategory?.disposalTips ?: ""
-        )
-    }
-
-    val examples = remember {
+    val examples = remember(initialCategory?.id) {
         mutableStateListOf(
-            *(initialCategory?.examples
-                ?: emptyList())
-                .toTypedArray()
+            *(initialCategory?.examples ?: emptyList()).toTypedArray()
         )
     }
 
-    var exampleInput by remember {
+    var exampleInput by remember(initialCategory?.id) {
         mutableStateOf("")
     }
 
-    Dialog(
-        onDismissRequest = onDismiss
-    ) {
+    var validationMessage by remember(initialCategory?.id) {
+        mutableStateOf<String?>(null)
+    }
 
+    Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier
                 .width(dialogWidth)
@@ -984,19 +967,11 @@ private fun WasteCategoryDialog(
             color = White,
             shadowElevation = 8.dp
         ) {
-
             Column(
                 modifier = Modifier
                     .padding(22.dp)
-                    .verticalScroll(
-                        rememberScrollState()
-                    )
+                    .verticalScroll(rememberScrollState())
             ) {
-
-                // ================================================
-                // WASTE SEGREGATION GUIDE
-                // ================================================
-
                 Text(
                     text = "WASTE SEGREGATION GUIDE",
                     color = EcoDarkGreen,
@@ -1004,19 +979,12 @@ private fun WasteCategoryDialog(
                     fontWeight = FontWeight.Medium
                 )
 
-                Spacer(
-                    modifier = Modifier.height(5.dp)
-                )
-
-                // ================================================
-                // TITLE + CLOSE
-                // ================================================
+                Spacer(Modifier.height(5.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     Text(
                         text = title,
                         color = EcoTextGreen,
@@ -1031,394 +999,298 @@ private fun WasteCategoryDialog(
                         tint = EcoTextGreen,
                         modifier = Modifier
                             .size(22.dp)
-                            .clickable {
-                                onDismiss()
+                            .clickable { onDismiss() }
+                    )
+                }
+
+                Spacer(Modifier.height(13.dp))
+
+                DialogLabel("Garbage Type")
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    wasteTypes.chunked(2).forEach { typeRow ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement =
+                                Arrangement.spacedBy(8.dp)
+                        ) {
+                            typeRow.forEach { type ->
+                                ThemeChoice(
+                                    text = type,
+                                    selected = selectedTheme == type,
+                                    background =
+                                        getWasteTypeBackground(type),
+                                    textColor =
+                                        getWasteTypeTextColor(type),
+                                    onClick = {
+                                        selectedTheme = type
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
-                    )
+
+                            if (typeRow.size == 1) {
+                                Spacer(Modifier.weight(1f))
+                            }
+                        }
+                    }
                 }
 
-                Spacer(
-                    modifier = Modifier.height(13.dp)
-                )
+                Spacer(Modifier.height(12.dp))
 
-                // ================================================
-                // CATEGORY NAME
-                // ================================================
-
-                DialogLabel(
-                    text = "Category Name"
-                )
-
-                SmallTextField(
-                    value = categoryName,
-                    onValueChange = {
-                        categoryName = it
-                    },
-                    placeholder = "Enter category name"
-                )
-
-                Spacer(
-                    modifier = Modifier.height(5.dp)
-                )
-
-                // ================================================
-                // COLOR THEME
-                // ================================================
-
-                DialogLabel(
-                    text = "Color Theme"
-                )
-
-                Spacer(
-                    modifier = Modifier.height(5.dp)
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement =
-                        Arrangement.spacedBy(8.dp)
-                ) {
-
-                    ThemeChoice(
-                        text = "Biodegradable",
-                        selected =
-                            selectedTheme ==
-                                    "Biodegradable",
-                        background =
-                            BiodegradableBackground,
-                        textColor =
-                            BiodegradableText,
-                        onClick = {
-                            selectedTheme =
-                                "Biodegradable"
-                        }
-                    )
-
-                    ThemeChoice(
-                        text = "Recyclable",
-                        selected =
-                            selectedTheme ==
-                                    "Recyclable",
-                        background =
-                            RecyclableBackground,
-                        textColor =
-                            RecyclableText,
-                        onClick = {
-                            selectedTheme =
-                                "Recyclable"
-                        }
-                    )
-                }
-
-                Spacer(
-                    modifier = Modifier.height(8.dp)
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement =
-                        Arrangement.spacedBy(8.dp)
-                ) {
-
-                    ThemeChoice(
-                        text = "Residual",
-                        selected =
-                            selectedTheme ==
-                                    "Residual",
-                        background =
-                            ResidualBackground,
-                        textColor =
-                            ResidualText,
-                        onClick = {
-                            selectedTheme =
-                                "Residual"
-                        }
-                    )
-
-                    ThemeChoice(
-                        text = "Infectious",
-                        selected =
-                            selectedTheme ==
-                                    "Infectious",
-                        background =
-                            InfectiousBackground,
-                        textColor =
-                            InfectiousText,
-                        onClick = {
-                            selectedTheme =
-                                "Infectious"
-                        }
-                    )
-                }
-
-                Spacer(
-                    modifier = Modifier.height(5.dp)
-                )
-
-                // ================================================
-                // DESCRIPTION
-                // ================================================
-
-                DialogLabel(
-                    text = "Description"
-                )
+                DialogLabel("Description")
 
                 SmallTextField(
                     value = description,
                     onValueChange = {
                         description = it
+                        validationMessage = null
                     },
                     placeholder = "Enter description"
                 )
 
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
+                Spacer(Modifier.height(12.dp))
 
-                // ================================================
-                // EXAMPLES
-                // ================================================
-
-                DialogLabel(
-                    text = "Examples"
-                )
+                DialogLabel("Examples")
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     SmallTextField(
                         value = exampleInput,
-                        onValueChange = {
-                            exampleInput = it
-                        },
+                        onValueChange = { exampleInput = it },
                         placeholder = "Type an example",
                         modifier = Modifier.weight(1f)
                     )
 
-                    Spacer(
-                        modifier = Modifier.width(5.dp)
-                    )
+                    Spacer(Modifier.width(5.dp))
 
                     Button(
                         onClick = {
+                            val value = exampleInput.trim()
 
-                            if (
-                                exampleInput
-                                    .trim()
-                                    .isNotEmpty()
-                            ) {
-
-                                examples.add(
-                                    exampleInput.trim()
-                                )
-
+                            if (value.isNotEmpty()) {
+                                examples.add(value)
                                 exampleInput = ""
                             }
                         },
-
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor =
-                                    Color(0xFFE5F7EA),
-                                contentColor =
-                                    EcoGreen
-                            ),
-
-                        shape =
-                            RoundedCornerShape(16.dp),
-
-                        modifier =
-                            Modifier.height(40.dp)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE5F7EA),
+                            contentColor = EcoGreen
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.height(40.dp)
                     ) {
-
-                        Text(
-                            text = "Add",
-                            fontSize = 12.sp
-                        )
+                        Text("Add", fontSize = 12.sp)
                     }
                 }
 
-                Spacer(
-                    modifier = Modifier.height(5.dp)
-                )
+                Spacer(Modifier.height(5.dp))
 
                 examples.forEachIndexed { index, example ->
-
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(
-                                vertical = 2.dp
-                            )
-                            .clip(
-                                RoundedCornerShape(16.dp)
-                            )
-                            .background(
-                                Color(0xFFE9F8ED)
-                            )
+                            .padding(vertical = 2.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFFE9F8ED))
                             .padding(
                                 horizontal = 12.dp,
                                 vertical = 8.dp
                             ),
-
-                        verticalAlignment =
-                            Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-
                         Text(
                             text = example,
                             color = EcoTextGreen,
                             fontSize = 12.sp,
-                            modifier =
-                                Modifier.weight(1f)
+                            modifier = Modifier.weight(1f)
                         )
 
                         Icon(
-                            imageVector =
-                                Icons.Default.Close,
-                            contentDescription =
-                                "Remove example",
-
-                            tint =
-                                Color(0xFF20A457),
-
-                            modifier =
-                                Modifier
-                                    .size(16.dp)
-                                    .clickable {
-
-                                        examples.removeAt(
-                                            index
-                                        )
-                                    }
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Remove example",
+                            tint = Color(0xFF20A457),
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clickable {
+                                    examples.removeAt(index)
+                                }
                         )
                     }
                 }
 
-                Spacer(
-                    modifier = Modifier.height(5.dp)
-                )
+                Spacer(Modifier.height(12.dp))
 
-                // ================================================
-                // DISPOSAL TIPS
-                // ================================================
-
-                DialogLabel(
-                    text = "Disposal Tips for Residents"
-                )
+                DialogLabel("Disposal Tips for Residents")
 
                 SmallTextField(
                     value = disposalTips,
                     onValueChange = {
                         disposalTips = it
+                        validationMessage = null
                     },
                     placeholder = "Enter disposal tips"
                 )
 
-                Spacer(
-                    modifier = Modifier.height(16.dp)
-                )
+                validationMessage?.let { message ->
+                    Spacer(Modifier.height(8.dp))
 
-                // ================================================
-                // BUTTONS
-                // ================================================
+                    Text(
+                        text = message,
+                        color = Color.Red,
+                        fontSize = 11.sp
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement =
-                        Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-
                     Button(
                         onClick = onDismiss,
-
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = White,
-                                contentColor = EcoGreen
-                            ),
-
-                        border =
-                            androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                EcoBorder
-                            ),
-
-                        shape =
-                            RoundedCornerShape(16.dp),
-
-                        modifier =
-                            Modifier.weight(1f)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = White,
+                            contentColor = EcoGreen
+                        ),
+                        border = BorderStroke(1.dp, EcoBorder),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
-
-                        Text(
-                            text = "Cancel",
-                            fontSize = 12.sp
-                        )
+                        Text("Cancel", fontSize = 12.sp)
                     }
 
                     Button(
                         onClick = {
+                            when {
+                                description.trim().isEmpty() -> {
+                                    validationMessage =
+                                        "Please enter a description."
+                                }
 
-                            if (
-                                categoryName
-                                    .trim()
-                                    .isNotEmpty()
-                            ) {
+                                disposalTips.trim().isEmpty() -> {
+                                    validationMessage =
+                                        "Please enter disposal tips."
+                                }
 
-                                onSave(
-                                    WasteGuideCategory(
-                                        id =
-                                            initialCategory
-                                                ?.id ?: 0,
+                                else -> {
+                                    validationMessage = null
 
-                                        name =
-                                            categoryName
-                                                .trim(),
-
-                                        colorTheme =
-                                            selectedTheme,
-
-                                        description =
-                                            description
-                                                .trim(),
-
-                                        examples =
-                                            examples.toList(),
-
-                                        disposalTips =
-                                            disposalTips
-                                                .trim()
+                                    onSave(
+                                        WasteGuideCategory(
+                                            id = initialCategory?.id ?: 0,
+                                            name = selectedTheme,
+                                            colorTheme = selectedTheme,
+                                            description = description.trim(),
+                                            examples = examples
+                                                .map { it.trim() }
+                                                .filter { it.isNotEmpty() },
+                                            disposalTips =
+                                                disposalTips.trim()
+                                        )
                                     )
-                                )
+                                }
                             }
                         },
-
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor =
-                                    EcoGreen
-                            ),
-
-                        shape =
-                            RoundedCornerShape(16.dp),
-
-                        modifier =
-                            Modifier.weight(1f)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EcoGreen
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
-
                         Text(
-                            text =
-                                if (
-                                    initialCategory == null
-                                ) {
-                                    "Add Category"
-                                } else {
-                                    "Save Changes"
-                                },
+                            text = if (initialCategory == null) {
+                                "Add Category"
+                            } else {
+                                "Save Changes"
+                            },
+                            color = White,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
 
+// ============================================================
+// ADD / EDIT CONFIRMATION DIALOG
+// ============================================================
+
+@Composable
+private fun ConfirmWasteCategoryDialog(
+    isEdit: Boolean,
+    categoryName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier.width(420.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = White,
+            shadowElevation = 8.dp
+        ) {
+            Column(Modifier.padding(22.dp)) {
+                Text(
+                    text = if (isEdit) {
+                        "Confirm Changes"
+                    } else {
+                        "Confirm New Category"
+                    },
+                    color = EcoTextGreen,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                Text(
+                    text = if (isEdit) {
+                        "Save the changes to \"$categoryName\"? Your description, examples, and disposal tips will be updated."
+                    } else {
+                        "Add \"$categoryName\" to the Waste Segregation Guide?"
+                    },
+                    color = EcoTextGreen,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+
+                Spacer(Modifier.height(18.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = White,
+                            contentColor = EcoGreen
+                        ),
+                        border = BorderStroke(1.dp, EcoBorder),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancel", fontSize = 12.sp)
+                    }
+
+                    Button(
+                        onClick = onConfirm,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EcoGreen
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = if (isEdit) "Save Changes" else "Confirm Add",
                             color = White,
                             fontSize = 12.sp
                         )
@@ -1434,10 +1306,7 @@ private fun WasteCategoryDialog(
 // ============================================================
 
 @Composable
-private fun DialogLabel(
-    text: String
-) {
-
+private fun DialogLabel(text: String) {
     Text(
         text = text,
         color = EcoTextGreen,
@@ -1445,9 +1314,7 @@ private fun DialogLabel(
         fontWeight = FontWeight.Medium
     )
 
-    Spacer(
-        modifier = Modifier.height(4.dp)
-    )
+    Spacer(Modifier.height(4.dp))
 }
 
 // ============================================================
@@ -1461,40 +1328,29 @@ private fun SmallTextField(
     placeholder: String,
     modifier: Modifier = Modifier
 ) {
-
     TextField(
         value = value,
         onValueChange = onValueChange,
-
         placeholder = {
-
             Text(
                 text = placeholder,
                 color = Color(0xFF80A486),
                 fontSize = 11.sp
             )
         },
-
         singleLine = true,
-
-        colors =
-            TextFieldDefaults.colors(
-                focusedContainerColor = White,
-                unfocusedContainerColor = White,
-                focusedIndicatorColor = EcoBorder,
-                unfocusedIndicatorColor = EcoBorder,
-                cursorColor = EcoGreen
-            ),
-
-        shape =
-            RoundedCornerShape(14.dp),
-
-        textStyle =
-            TextStyle(
-                color = EcoTextGreen,
-                fontSize = 11.sp
-            ),
-
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = White,
+            unfocusedContainerColor = White,
+            focusedIndicatorColor = EcoBorder,
+            unfocusedIndicatorColor = EcoBorder,
+            cursorColor = EcoGreen
+        ),
+        shape = RoundedCornerShape(14.dp),
+        textStyle = TextStyle(
+            color = EcoTextGreen,
+            fontSize = 11.sp
+        ),
         modifier = modifier
             .fillMaxWidth()
             .height(45.dp)
@@ -1502,7 +1358,7 @@ private fun SmallTextField(
 }
 
 // ============================================================
-// COLOR THEME
+// GARBAGE TYPE OPTION
 // ============================================================
 
 @Composable
@@ -1511,53 +1367,37 @@ private fun ThemeChoice(
     selected: Boolean,
     background: Color,
     textColor: Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-
     Box(
-        modifier = Modifier
-            .width(210.dp)
-            .height(38.dp)
-            .clip(
-                RoundedCornerShape(18.dp)
-            )
-            .background(
-                if (selected)
-                    background
-                else
-                    White
-            )
+        modifier = modifier
+            .height(42.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(if (selected) background else White)
             .border(
                 width = 1.dp,
-                color =
-                    if (selected)
-                        textColor
-                    else
-                        Color(0xFFD5E8D9),
-                shape =
-                    RoundedCornerShape(18.dp)
+                color = if (selected) {
+                    textColor
+                } else {
+                    Color(0xFFD5E8D9)
+                },
+                shape = RoundedCornerShape(18.dp)
             )
-            .clickable {
-                onClick()
-            },
-
+            .clickable { onClick() }
+            .padding(horizontal = 4.dp),
         contentAlignment = Alignment.Center
     ) {
-
         Text(
             text = text,
-            color =
-                if (selected)
-                    textColor
-                else
-                    EcoTextGreen,
+            color = if (selected) textColor else EcoTextGreen,
             fontSize = 10.sp
         )
     }
 }
 
 // ============================================================
-// DELETE CONFIRMATION
+// DELETE CONFIRMATION DIALOG
 // ============================================================
 
 @Composable
@@ -1566,22 +1406,14 @@ private fun DeleteWasteCategoryDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-
-    Dialog(
-        onDismissRequest = onDismiss
-    ) {
-
+    Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier.width(420.dp),
             shape = RoundedCornerShape(12.dp),
             color = White,
             shadowElevation = 8.dp
         ) {
-
-            Column(
-                modifier = Modifier.padding(22.dp)
-            ) {
-
+            Column(Modifier.padding(22.dp)) {
                 Text(
                     text = "Delete Waste Category",
                     color = EcoTextGreen,
@@ -1589,75 +1421,42 @@ private fun DeleteWasteCategoryDialog(
                     fontWeight = FontWeight.Medium
                 )
 
-                Spacer(
-                    modifier = Modifier.height(10.dp)
-                )
+                Spacer(Modifier.height(10.dp))
 
                 Text(
-                    text =
-                        "Are you sure you want to delete \"$categoryName\"? This category will be removed from the Waste Segregation Guide.",
-
+                    text = "Are you sure you want to delete \"$categoryName\"? This category will be removed from the Waste Segregation Guide.",
                     color = EcoTextGreen,
-
                     fontSize = 12.sp,
-
                     lineHeight = 18.sp
                 )
 
-                Spacer(
-                    modifier = Modifier.height(18.dp)
-                )
+                Spacer(Modifier.height(18.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement =
-                        Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-
                     Button(
                         onClick = onDismiss,
-
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = White,
-                                contentColor = EcoGreen
-                            ),
-
-                        border =
-                            androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                EcoBorder
-                            ),
-
-                        shape =
-                            RoundedCornerShape(16.dp),
-
-                        modifier =
-                            Modifier.weight(1f)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = White,
+                            contentColor = EcoGreen
+                        ),
+                        border = BorderStroke(1.dp, EcoBorder),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
-
-                        Text(
-                            text = "Cancel",
-                            fontSize = 12.sp
-                        )
+                        Text("Cancel", fontSize = 12.sp)
                     }
 
                     Button(
                         onClick = onConfirm,
-
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor =
-                                    Color(0xFFD9535F)
-                            ),
-
-                        shape =
-                            RoundedCornerShape(16.dp),
-
-                        modifier =
-                            Modifier.weight(1f)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFD9535F)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
-
                         Text(
                             text = "Delete",
                             color = White,

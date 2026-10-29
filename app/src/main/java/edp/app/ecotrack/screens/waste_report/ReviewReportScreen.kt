@@ -1,6 +1,9 @@
+
 package edp.app.ecotrack.screens.waste_report
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -47,27 +51,12 @@ private val EcoDarkGreen = Color(0xFF216B2A)
 private val EcoLightGreen = Color(0xFFE6F5EA)
 private val EcoBorder = Color(0xFFB7DCC0)
 private val EcoTextGreen = Color(0xFF286B32)
-
 private val White = Color.White
 private val GrayText = Color(0xFF66756A)
-
 private val PhotoGreen = Color(0xFFDFF4E6)
 private val PhotoBlue = Color(0xFFDDF5F7)
+private val RejectRed = Color(0xFFDC3545)
 
-private val RejectRed = Color(0xFFE56A6A)
-
-/**
- * Review Collector Proof popup.
- *
- * residentPhotoRes:
- *      Optional local resident photo.
- *
- * collectorPhotoRes:
- *      Optional local collector proof photo.
- *
- * Both are optional so the frontend can compile before
- * the real backend image URLs are connected.
- */
 @Composable
 fun ReviewReportScreen(
     report: WasteReport,
@@ -77,19 +66,15 @@ fun ReviewReportScreen(
     @DrawableRes residentPhotoRes: Int? = null,
     @DrawableRes collectorPhotoRes: Int? = null
 ) {
-
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = White,
         shape = RoundedCornerShape(14.dp),
-
         title = {
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Text(
                     text = "Review Collector Proof",
                     color = EcoDarkGreen,
@@ -100,30 +85,22 @@ fun ReviewReportScreen(
 
                 IconButton(
                     onClick = onDismiss,
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
-
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Close",
                         tint = Color.Black,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
         },
-
         text = {
-
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-
-                // =================================================
-                // REPORT SUMMARY
-                // =================================================
-
                 Text(
                     text = "REPORT SUMMARY",
                     color = EcoTextGreen,
@@ -144,38 +121,22 @@ fun ReviewReportScreen(
                             shape = RoundedCornerShape(8.dp)
                         )
                         .padding(9.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-
-                    SummaryRow(
-                        label = "Report ID",
-                        value = report.reportId
-                    )
-
-                    SummaryRow(
-                        label = "Report Type",
-                        value = report.category
-                    )
-
-                    SummaryRow(
-                        label = "Resident",
-                        value = report.resident
-                    )
-
+                    SummaryRow("Report ID", report.reportId)
+                    SummaryRow("Report Type", report.category)
+                    SummaryRow("Resident", report.resident)
                     SummaryRow(
                         label = "Location",
-                        value = report.location
+                        value = report.location,
+                        showLocationIcon = true
                     )
-
                     SummaryRow(
-                        label = "Assigned Collector",
-                        value = report.assignedTo
+                        "Assigned Collector",
+                        report.assignedTo.ifBlank { "Not assigned" }
                     )
+                    SummaryRow("Submitted Date", report.date)
                 }
-
-                // =================================================
-                // BEFORE & AFTER PHOTOS
-                // =================================================
 
                 Text(
                     text = "BEFORE & AFTER PHOTOS",
@@ -188,7 +149,6 @@ fun ReviewReportScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-
                     ProofPhoto(
                         title = "Before",
                         photoRes = residentPhotoRes,
@@ -204,10 +164,6 @@ fun ReviewReportScreen(
                     )
                 }
 
-                // =================================================
-                // ACTIVITY TIMELINE
-                // =================================================
-
                 Text(
                     text = "ACTIVITY TIMELINE",
                     color = EcoTextGreen,
@@ -215,55 +171,32 @@ fun ReviewReportScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-                ActivityTimeline(
-                    report = report
-                )
+                ActivityTimeline(report = report)
             }
         },
-
-        // =========================================================
-        // ACTION BUTTONS
-        // =========================================================
-
         confirmButton = {
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-
-                // -------------------------------------------------
-                // REJECT PROOF
-                // -------------------------------------------------
-
                 OutlinedButton(
                     onClick = onRejectProof,
                     modifier = Modifier
                         .weight(1f)
                         .height(42.dp),
                     shape = RoundedCornerShape(20.dp),
-                    border = androidx.compose.foundation.BorderStroke(
-                        width = 1.dp,
-                        color = RejectRed
-                    ),
+                    border = BorderStroke(1.dp, RejectRed),
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = Color.Transparent,
                         contentColor = RejectRed
                     ),
-                    contentPadding = PaddingValues(
-                        horizontal = 16.dp
-                    )
+                    contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
-
                     Text(
                         text = "Reject Proof",
                         fontSize = 10.sp
                     )
                 }
-
-                // -------------------------------------------------
-                // APPROVE REPORT
-                // -------------------------------------------------
 
                 Button(
                     onClick = onApproveReport,
@@ -273,13 +206,10 @@ fun ReviewReportScreen(
                     shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = EcoGreen,
-                        contentColor = Color.White
+                        contentColor = White
                     ),
-                    contentPadding = PaddingValues(
-                        horizontal = 16.dp
-                    )
+                    contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
-
                     Text(
                         text = "Approve Report",
                         fontSize = 10.sp
@@ -287,14 +217,9 @@ fun ReviewReportScreen(
                 }
             }
         },
-
-        dismissButton = null
+        dismissButton = {}
     )
 }
-
-// =============================================================
-// SUMMARY ROW
-// =============================================================
 
 @Composable
 private fun SummaryRow(
@@ -302,24 +227,18 @@ private fun SummaryRow(
     value: String,
     showLocationIcon: Boolean = false
 ) {
-
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         if (showLocationIcon) {
-
             Icon(
                 imageVector = Icons.Default.LocationOn,
                 contentDescription = null,
                 tint = EcoGreen,
-                modifier = Modifier.size(9.dp)
+                modifier = Modifier.size(12.dp)
             )
-
-            Spacer(
-                modifier = Modifier.width(3.dp)
-            )
+            Spacer(modifier = Modifier.width(3.dp))
         }
 
         Text(
@@ -330,64 +249,47 @@ private fun SummaryRow(
         )
 
         Text(
-            text = value,
+            text = value.ifBlank { "—" },
             color = EcoTextGreen,
             fontSize = 10.sp
         )
     }
 }
 
-// =============================================================
-// PHOTO
-// =============================================================
-
 @Composable
 private fun ProofPhoto(
     title: String,
     @DrawableRes photoRes: Int?,
     backgroundColor: Color,
-    modifier: Modifier
+    modifier: Modifier = Modifier
 ) {
-
     Box(
         modifier = modifier
             .height(68.dp)
             .clip(RoundedCornerShape(7.dp))
             .background(backgroundColor)
-            .clickable {
-                // Reserved for photo viewer later.
-            },
+            .clickable(enabled = false) {},
         contentAlignment = Alignment.Center
     ) {
-
         if (photoRes != null) {
-
-            androidx.compose.foundation.Image(
+            Image(
                 painter = painterResource(id = photoRes),
-                contentDescription = title,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(68.dp)
-                    .clip(RoundedCornerShape(7.dp)),
+                contentDescription = "$title photo",
+                modifier = Modifier.fillMaxWidth().height(68.dp),
                 contentScale = ContentScale.Crop
             )
-
         } else {
-
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-
                 Icon(
                     imageVector = Icons.Default.Image,
-                    contentDescription = title,
+                    contentDescription = null,
                     tint = EcoGreen,
-                    modifier = Modifier.size(15.dp)
+                    modifier = Modifier.size(18.dp)
                 )
 
-                Spacer(
-                    modifier = Modifier.height(3.dp)
-                )
+                Spacer(modifier = Modifier.height(3.dp))
 
                 Text(
                     text = title,
@@ -399,19 +301,9 @@ private fun ProofPhoto(
     }
 }
 
-// =============================================================
-// ACTIVITY TIMELINE
-// =============================================================
-
 @Composable
-private fun ActivityTimeline(
-    report: WasteReport
-) {
-
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-
+private fun ActivityTimeline(report: WasteReport) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         TimelineItem(
             title = "Report submitted",
             detail = "${report.resident} submitted this report",
@@ -421,21 +313,21 @@ private fun ActivityTimeline(
 
         TimelineItem(
             title = "Collector assigned",
-            detail = report.assignedTo,
+            detail = report.assignedTo.ifBlank { "No collector assigned" },
             icon = Icons.Default.Person,
             last = false
         )
 
         TimelineItem(
             title = "Collection task started",
-            detail = "Status moved to In Progress",
+            detail = "Status: In Progress",
             icon = Icons.Default.Assignment,
             last = false
         )
 
         TimelineItem(
             title = "Proof photo uploaded",
-            detail = "Collector submitted proof",
+            detail = "Collector submitted proof for review",
             icon = Icons.Default.Image,
             last = false
         )
@@ -449,46 +341,32 @@ private fun ActivityTimeline(
     }
 }
 
-// =============================================================
-// TIMELINE ITEM
-// =============================================================
-
 @Composable
 private fun TimelineItem(
     title: String,
     detail: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     last: Boolean
 ) {
-
-    Row(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-
+    Row(modifier = Modifier.fillMaxWidth()) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             Box(
                 modifier = Modifier
-                    .size(12.dp)
-                    .background(
-                        color = EcoGreen,
-                        shape = CircleShape
-                    ),
+                    .size(16.dp)
+                    .background(EcoGreen, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     tint = White,
-                    modifier = Modifier.size(6.dp)
+                    modifier = Modifier.size(9.dp)
                 )
             }
 
             if (!last) {
-
                 Box(
                     modifier = Modifier
                         .width(1.dp)
@@ -498,14 +376,9 @@ private fun TimelineItem(
             }
         }
 
-        Spacer(
-            modifier = Modifier.width(8.dp)
-        )
+        Spacer(modifier = Modifier.width(8.dp))
 
-        Column(
-            modifier = Modifier.padding(bottom = 6.dp)
-        ) {
-
+        Column(modifier = Modifier.padding(bottom = 6.dp)) {
             Text(
                 text = title,
                 color = EcoTextGreen,

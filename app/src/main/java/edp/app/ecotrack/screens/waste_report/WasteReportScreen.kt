@@ -16,39 +16,55 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.ui.draw.shadow
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import edp.app.ecotrack.network.ApiClient
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+import org.json.JSONObject
 
-// =========================================================
 // COLORS
-// =========================================================
 
 private val EcoDarkGreen = Color(0xFF216B2A)
 private val EcoGreen = Color(0xFF2E7D32)
@@ -57,10 +73,9 @@ private val EcoBorder = Color(0xFF8BE5A7)
 private val EcoTextGreen = Color(0xFF286B32)
 private val White = Color.White
 private val SearchBackground = Color(0xFFE9F5EC)
+private val RejectRed = Color(0xFFDC3545)
 
-// =========================================================
 // WASTE REPORT DATA
-// =========================================================
 
 data class WasteReport(
     val reportId: String,
@@ -69,62 +84,127 @@ data class WasteReport(
     val location: String,
     val date: String,
     val assignedTo: String,
-    val status: String
+    val status: String,
+    val photoUrl: String? = null,
+    val description: String = "",
+    val barangayId: String = ""
 )
 
-// =========================================================
-// SAMPLE FRONTEND DATA
-// =========================================================
+// GARBAGE COLLECTOR OPTION
 
-private val sampleWasteReports = listOf(
-
-    WasteReport(
-        reportId = "#1024",
-        resident = "Angel Dadole",
-        category = "Overflowing Garbage",
-        location = "Campu, CDOC",
-        date = "December 28, 2005",
-        assignedTo = "Carlos Mendoza",
-        status = "For Verification"
-    ),
-
-    WasteReport(
-        reportId = "#1023",
-        resident = "Azzie Umbay",
-        category = "Illegal Dumping",
-        location = "Bulua, CDOC",
-        date = "June 29, 2004",
-        assignedTo = "Ronald Mendoza",
-        status = "In Progress"
-    ),
-
-    WasteReport(
-        reportId = "#1022",
-        resident = "Michelle Sy",
-        category = "Improper Disposal",
-        location = "Kauswagan, CDOC",
-        date = "September 22, 2003",
-        assignedTo = "—",
-        status = "Pending"
-    ),
-
-    WasteReport(
-        reportId = "#1021",
-        resident = "Chloe Monteza",
-        category = "Other Waste Concern",
-        location = "Bulua, CDOC",
-        date = "August 16, 2006",
-        assignedTo = "Lito Bautista",
-        status = "Resolved"
-    )
+data class GarbageCollectorOption(
+    val collectorId: String,
+    val name: String,
+    val assignedArea: String = "Unassigned Area"
 )
 
-// =========================================================
+// PARSE REPORTS FROM BACKEND
+
+private fun parseWasteReports(
+    response: JSONObject
+): List<WasteReport> {
+    val reportsArray = response.optJSONArray("reports")
+        ?: return emptyList()
+
+    val loadedReports = mutableListOf<WasteReport>()
+
+    for (i in 0 until reportsArray.length()) {
+        val item = reportsArray.optJSONObject(i) ?: continue
+
+        val reportNumber = item.optString("report_id", "")
+        val createdAt = item.optString("created_at", "")
+        val reportType = item.optString("report_type", "Other")
+
+        val locationDetails =
+            item.optString("location_details", "")
+                .takeUnless {
+                    it.isBlank() || it == "null"
+                } ?: "—"
+
+        val rawStatus = item.optString("status", "Pending")
+
+        android.util.Log.d(
+            "EcoTrackReports",
+            "Report ID: $reportNumber | Raw status: $rawStatus"
+        )
+
+        val formattedStatus = when (
+            rawStatus.trim()
+                .replace("_", " ")
+                .replace("-", " ")
+                .lowercase()
+        ) {
+            "pending" -> "Pending"
+            "in progress" -> "In Progress"
+            "for verification",
+            "waiting for verification" -> "For Verification"
+            "resolved", "completed" -> "Resolved"
+            "cancelled", "canceled" -> "Cancelled"
+            "rejected" -> "Rejected"
+            else -> rawStatus
+        }
+
+        val residentName =
+            item.optString("resident_name", "")
+                .takeUnless {
+                    it.isBlank() || it == "null"
+                }
+                ?: item.optString("resident_full_name", "")
+                    .takeUnless {
+                        it.isBlank() || it == "null"
+                    }
+                ?: "—"
+
+        val collectorName = if (
+            formattedStatus == "Pending"
+        ) {
+            "-"
+        } else {
+            item.optString("assigned_collector_name", "")
+                .takeUnless {
+                    it.isBlank() ||
+                            it == "null" ||
+                            it == "—"
+                } ?: "-"
+        }
+
+        loadedReports.add(
+            WasteReport(
+                reportId = if (reportNumber.isBlank()) {
+                    "—"
+                } else {
+                    "#$reportNumber"
+                },
+                resident = residentName,
+                category = reportType,
+                location = locationDetails,
+                date = if (createdAt.isBlank()) {
+                    "—"
+                } else {
+                    createdAt.take(10)
+                },
+                assignedTo = collectorName,
+                status = formattedStatus,
+                photoUrl = item.optString("photo_url", "")
+                    .takeUnless {
+                        it.isBlank() || it == "null"
+                    },
+                description = item.optString("description", "")
+                    .takeUnless { it == "null" } ?: "",
+                barangayId = item.optString("barangay_id", "")
+                    .takeUnless { it == "null" } ?: ""
+            )
+        )
+    }
+
+    return loadedReports
+}
+
 // MAIN WASTE REPORT SCREEN
-// =========================================================
 
 @Composable
 fun WasteReportScreen(
+    accessToken: String,
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onReviewClick: (WasteReport) -> Unit = {},
@@ -137,7 +217,6 @@ fun WasteReportScreen(
     onScheduleClick: () -> Unit = {},
     onAnalyticsClick: () -> Unit = {}
 ) {
-
     var selectedFilter by remember {
         mutableStateOf("All")
     }
@@ -147,7 +226,15 @@ fun WasteReportScreen(
     }
 
     var reports by remember {
-        mutableStateOf(sampleWasteReports)
+        mutableStateOf<List<WasteReport>>(emptyList())
+    }
+
+    var isLoading by remember {
+        mutableStateOf(false)
+    }
+
+    var errorMessage by remember {
+        mutableStateOf<String?>(null)
     }
 
     var selectedReviewReport by remember {
@@ -162,12 +249,89 @@ fun WasteReportScreen(
         mutableStateOf<WasteReport?>(null)
     }
 
-    // =====================================================
+    var showRejectConfirmation by remember {
+        mutableStateOf(false)
+    }
+
+    // REASSIGN STATES
+
+    var showEditReport by remember {
+        mutableStateOf(false)
+    }
+
+    var showReassignConfirmation by remember {
+        mutableStateOf(false)
+    }
+
+    var selectedReassignReport by remember {
+        mutableStateOf<WasteReport?>(null)
+    }
+
+    var selectedReassignCollector by remember {
+        mutableStateOf<GarbageCollectorOption?>(null)
+    }
+
+    var rejectError by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var reassignError by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var refreshVersion by remember {
+        mutableLongStateOf(0L)
+    }
+
+    val coroutineScope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // LOAD REPORTS
+
+    LaunchedEffect(accessToken, refreshVersion) {
+        if (accessToken.isBlank()) {
+            reports = emptyList()
+            errorMessage = "Please log in as an admin."
+            isLoading = false
+            return@LaunchedEffect
+        }
+
+        isLoading = true
+        errorMessage = null
+
+        try {
+            reports = parseWasteReports(
+                ApiClient.getWasteReports(accessToken)
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            errorMessage =
+                e.message ?: "Failed to load waste reports."
+        } finally {
+            isLoading = false
+        }
+    }
+
+    // REFRESH WHEN APP RETURNS TO FOREGROUND
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshVersion++
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     // FILTER REPORTS
-    // =====================================================
 
     val filteredReports = reports.filter { report ->
-
         val matchesFilter =
             selectedFilter == "All" ||
                     report.status == selectedFilter
@@ -189,25 +353,22 @@ fun WasteReportScreen(
                     report.location.contains(
                         searchText,
                         ignoreCase = true
+                    ) ||
+                    report.assignedTo.contains(
+                        searchText,
+                        ignoreCase = true
                     )
 
         matchesFilter && matchesSearch
     }
 
-    // =====================================================
-    // SAME OUTER FRAME AS DASHBOARD
-    // =====================================================
+    // MAIN LAYOUT
 
     Row(
         modifier = Modifier
             .fillMaxSize()
             .background(EcoLightGreen)
     ) {
-
-        // =====================================================
-        // SIDEBAR
-        // =====================================================
-
         WasteReportSidebar(
             onDashboardClick = onDashboardClick,
             onCollectorsClick = onCollectorsClick,
@@ -217,31 +378,15 @@ fun WasteReportScreen(
             onWasteGuideClick = onWasteGuideClick
         )
 
-        // =====================================================
-        // MAIN AREA
-        // SAME STRUCTURE AS DASHBOARD
-        // =====================================================
-
         Column(
             modifier = Modifier
                 .fillMaxHeight()
                 .weight(1f)
         ) {
-
-            // =================================================
-            // TOP BAR
-            // SAME SIZE AS DASHBOARD
-            // =================================================
-
             WasteReportTopBar(
                 onNotificationClick = onNotificationClick,
                 onProfileClick = onProfileClick
             )
-
-            // =================================================
-            // PAGE CONTENT
-            // SAME CONTENT PADDING AS DASHBOARD
-            // =================================================
 
             LazyColumn(
                 modifier = Modifier
@@ -252,13 +397,7 @@ fun WasteReportScreen(
                     ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-
-                // =================================================
-                // PAGE TITLE
-                // =================================================
-
                 item {
-
                     Text(
                         text = "All Waste Reports",
                         color = EcoTextGreen,
@@ -267,60 +406,37 @@ fun WasteReportScreen(
                     )
                 }
 
-                // =================================================
-                // FILTERS + SEARCH
-                // =================================================
+                // FILTER BUTTONS
+                // "For Verification" is intentionally NOT a filter button.
+                // It remains a report status displayed in the table.
 
                 item {
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-
-                            WasteFilterButton(
-                                text = "All",
-                                selected = selectedFilter == "All"
-                            ) {
-                                selectedFilter = "All"
-                            }
-
-                            WasteFilterButton(
-                                text = "Pending",
-                                selected = selectedFilter == "Pending"
-                            ) {
-                                selectedFilter = "Pending"
-                            }
-
-                            WasteFilterButton(
-                                text = "In Progress",
-                                selected = selectedFilter == "In Progress"
-                            ) {
-                                selectedFilter = "In Progress"
-                            }
-
-                            WasteFilterButton(
-                                text = "For Verification",
-                                selected = selectedFilter == "For Verification"
-                            ) {
-                                selectedFilter = "For Verification"
-                            }
-
-                            WasteFilterButton(
-                                text = "Resolved",
-                                selected = selectedFilter == "Resolved"
-                            ) {
-                                selectedFilter = "Resolved"
+                            listOf(
+                                "All",
+                                "Pending",
+                                "In Progress",
+                                "For Verification",
+                                "Resolved",
+                                "Cancelled",
+                                "Rejected"
+                            ).forEach { filter ->
+                                WasteFilterButton(
+                                    text = filter,
+                                    selected = selectedFilter == filter
+                                ) {
+                                    selectedFilter = filter
+                                }
                             }
                         }
 
-                        Spacer(
-                            modifier = Modifier.weight(1f)
-                        )
+                        Spacer(modifier = Modifier.weight(1f))
 
                         SearchBar(
                             searchText = searchText,
@@ -331,114 +447,730 @@ fun WasteReportScreen(
                     }
                 }
 
-                // =================================================
-                // REPORT TABLE
-                // =================================================
-
                 item {
-
-                    WasteReportTable(
-                        reports = filteredReports,
-                        onReviewClick = { report ->
-                            selectedReviewReport = report
-                        },
-                        onAssignClick = { report ->
-                            selectedAssignReport = report
-                        },
-                        onViewClick = { report ->
-                            selectedViewReport = report
+                    when {
+                        isLoading -> {
+                            Text(
+                                text = "Loading waste reports...",
+                                color = EcoTextGreen,
+                                modifier = Modifier.padding(16.dp)
+                            )
                         }
-                    )
+
+                        errorMessage != null -> {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = errorMessage ?: "",
+                                    color = Color.Red
+                                )
+
+                                ActionButton(
+                                    text = "Retry",
+                                    backgroundColor = EcoGreen,
+                                    textColor = White,
+                                    onClick = {
+                                        refreshVersion++
+                                    }
+                                )
+                            }
+                        }
+
+                        else -> {
+                            WasteReportTable(
+                                reports = filteredReports,
+                                onReviewClick = { report ->
+                                    selectedReviewReport = report
+                                    onReviewClick(report)
+                                },
+                                onAssignClick = { report ->
+                                    selectedAssignReport = report
+                                    onAssignClick(report)
+                                },
+                                onViewClick = { report ->
+                                    selectedViewReport = report
+                                    onViewClick(report)
+                                }
+                            )
+                        }
+                    }
                 }
 
                 item {
-
-                    Spacer(
-                        modifier = Modifier.height(30.dp)
-                    )
+                    Spacer(modifier = Modifier.height(30.dp))
                 }
             }
         }
     }
-    // =================================================
+
     // REVIEW POPUP
-    // =================================================
 
     selectedReviewReport?.let { report ->
-
         ReviewReportScreen(
             report = report,
-
             onDismiss = {
                 selectedReviewReport = null
             },
-
             onApproveReport = {
-                reports = reports.map { currentReport ->
-                    if (currentReport.reportId == report.reportId) {
-                        currentReport.copy(
-                            status = "Resolved"
+                coroutineScope.launch {
+                    isLoading = true
+                    errorMessage = null
+
+                    try {
+                        ApiClient.resolveReport(
+                            accessToken = accessToken,
+                            reportId = report.reportId.removePrefix("#")
                         )
-                    } else {
-                        currentReport
+
+                        selectedReviewReport = null
+                        refreshVersion++
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        errorMessage =
+                            e.message ?: "Failed to approve the report."
+                    } finally {
+                        isLoading = false
                     }
                 }
-
-                selectedReviewReport = null
             }
         )
     }
 
-    // =================================================
     // ASSIGN POPUP
-    // =================================================
 
     selectedAssignReport?.let { report ->
-
         AssignReportScreen(
             report = report,
-
+            accessToken = accessToken,
             onDismiss = {
                 selectedAssignReport = null
             },
-
             onAssignCollector = { collector ->
+                coroutineScope.launch {
+                    isLoading = true
+                    errorMessage = null
 
-                reports = reports.map { currentReport ->
-                    if (currentReport.reportId == report.reportId) {
-                        currentReport.copy(
-                            assignedTo = collector.name,
-                            status = "In Progress"
+                    try {
+                        val numericReportId =
+                            report.reportId.removePrefix("#")
+
+                        require(numericReportId.toIntOrNull() != null) {
+                            "Invalid report ID. Please reload the reports."
+                        }
+
+                        require(collector.collectorId.toIntOrNull() != null) {
+                            "Invalid collector ID. Please reload the collectors."
+                        }
+
+                        ApiClient.assignCollector(
+                            accessToken = accessToken,
+                            reportId = numericReportId,
+                            collectorId = collector.collectorId
                         )
-                    } else {
-                        currentReport
+
+                        reports = parseWasteReports(
+                            ApiClient.getWasteReports(accessToken)
+                        )
+
+                        selectedAssignReport = null
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        errorMessage =
+                            e.message ?: "Failed to assign collector."
+                    } finally {
+                        isLoading = false
                     }
                 }
-
-                selectedAssignReport = null
             }
         )
     }
 
-    // =================================================
     // VIEW POPUP
-    // =================================================
 
     selectedViewReport?.let { report ->
-
         ViewReportScreen(
             report = report,
-
             onDismiss = {
                 selectedViewReport = null
+            },
+            onAssign = {
+                selectedViewReport = null
+                selectedAssignReport = report
+            },
+            onReject = {
+                rejectError = null
+                showRejectConfirmation = true
+            },
+            onEdit = {
+                if (report.status.equals("In Progress", ignoreCase = true)) {
+                    selectedReassignReport = report
+                    selectedReassignCollector = null
+                    reassignError = null
+                    showEditReport = true
+
+                    // Close the View popup before opening Edit.
+                    selectedViewReport = null
+                }
+            },
+            onAcceptResolve = {
+                coroutineScope.launch {
+                    isLoading = true
+                    errorMessage = null
+
+                    try {
+                        ApiClient.resolveReport(
+                            accessToken = accessToken,
+                            reportId = report.reportId.removePrefix("#")
+                        )
+
+                        selectedViewReport = null
+                        refreshVersion++
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        errorMessage =
+                            e.message ?: "Failed to resolve the report."
+                    } finally {
+                        isLoading = false
+                    }
+                }
+            }
+        )
+    }
+
+    // REJECT CONFIRMATION
+
+    if (showRejectConfirmation) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!isLoading) {
+                    showRejectConfirmation = false
+                    rejectError = null
+                }
+            },
+            containerColor = White,
+            shape = RoundedCornerShape(12.dp),
+            title = {
+                Text(
+                    text = "Confirm Rejection",
+                    color = EcoDarkGreen,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Are you sure you want to reject this waste report?",
+                        color = EcoTextGreen
+                    )
+
+                    rejectError?.let {
+                        Text(
+                            text = it,
+                            color = RejectRed,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = !isLoading,
+                    onClick = {
+                        val report = selectedViewReport
+                            ?: return@Button
+
+                        if (!report.status.equals(
+                                "For Verification",
+                                ignoreCase = true
+                            )
+                        ) {
+                            rejectError =
+                                "Only For Verification reports can be rejected."
+                            return@Button
+                        }
+
+                        coroutineScope.launch {
+                            isLoading = true
+                            rejectError = null
+
+                            try {
+                                ApiClient.rejectWasteReport(
+                                    accessToken = accessToken,
+                                    reportId = report.reportId.removePrefix("#")
+                                )
+
+                                showRejectConfirmation = false
+                                selectedViewReport = null
+                                refreshVersion++
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                rejectError =
+                                    e.message
+                                        ?: "Failed to reject the report."
+                            } finally {
+                                isLoading = false
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = RejectRed
+                    )
+                ) {
+                    Text(
+                        if (isLoading) {
+                            "Rejecting..."
+                        } else {
+                            "Confirm Reject"
+                        }
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !isLoading,
+                    onClick = {
+                        showRejectConfirmation = false
+                        rejectError = null
+                    }
+                ) {
+                    Text("Cancel", color = EcoGreen)
+                }
+            }
+        )
+    }
+
+    // EDIT POPUP: IN PROGRESS REPORTS ONLY
+    // This popup contains only garbage collector selection.
+
+    if (showEditReport) {
+        val report = selectedReassignReport
+
+        if (report != null) {
+            ReassignCollectorDialog(
+                report = report,
+                accessToken = accessToken,
+                onDismiss = {
+                    if (!isLoading) {
+                        showEditReport = false
+                        selectedReassignReport = null
+                        selectedReassignCollector = null
+                        reassignError = null
+                    }
+                },
+                onRequestReassign = { collector ->
+                    selectedReassignCollector = collector
+                    reassignError = null
+                    showEditReport = false
+                    showReassignConfirmation = true
+                }
+            )
+        }
+    }
+
+    // CONFIRM REASSIGNMENT
+
+    if (showReassignConfirmation) {
+        val report = selectedReassignReport
+        val collector = selectedReassignCollector
+
+        AlertDialog(
+            onDismissRequest = {
+                if (!isLoading) {
+                    showReassignConfirmation = false
+                    selectedReassignReport = null
+                    selectedReassignCollector = null
+                    reassignError = null
+                }
+            },
+            containerColor = White,
+            shape = RoundedCornerShape(12.dp),
+            title = {
+                Text(
+                    text = "Confirm Re-assignment",
+                    color = EcoDarkGreen,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = if (report != null && collector != null) {
+                            "Are you sure you want to reassign report " +
+                                    "${report.reportId} to ${collector.name}?"
+                        } else {
+                            "Please select a garbage collector."
+                        },
+                        color = EcoTextGreen
+                    )
+
+                    reassignError?.let {
+                        Text(
+                            text = it,
+                            color = RejectRed,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = !isLoading &&
+                            report != null &&
+                            collector != null,
+                    onClick = {
+                        val currentReport = report ?: return@Button
+                        val selectedCollector = collector ?: return@Button
+
+                        coroutineScope.launch {
+                            isLoading = true
+                            reassignError = null
+
+                            try {
+                                val numericReportId =
+                                    currentReport.reportId.removePrefix("#")
+
+                                require(numericReportId.toIntOrNull() != null) {
+                                    "Invalid report ID. Please refresh the reports."
+                                }
+
+                                require(
+                                    selectedCollector.collectorId.toIntOrNull() != null
+                                ) {
+                                    "Invalid collector ID. Please reload the collectors."
+                                }
+
+                                // Save the new collector assignment.
+
+                                ApiClient.assignCollector(
+                                    accessToken = accessToken,
+                                    reportId = numericReportId,
+                                    collectorId = selectedCollector.collectorId
+                                )
+
+                                // Reload reports after reassignment.
+
+                                reports = parseWasteReports(
+                                    ApiClient.getWasteReports(accessToken)
+                                )
+
+                                showReassignConfirmation = false
+                                showEditReport = false
+                                selectedReassignReport = null
+                                selectedReassignCollector = null
+                                selectedViewReport = null
+                                refreshVersion++
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                reassignError =
+                                    e.message
+                                        ?: "Failed to reassign the garbage collector."
+                            } finally {
+                                isLoading = false
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = EcoGreen
+                    )
+                ) {
+                    Text(
+                        if (isLoading) {
+                            "Re-assigning..."
+                        } else {
+                            "Confirm Re-assign"
+                        }
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !isLoading,
+                    onClick = {
+                        showReassignConfirmation = false
+                        selectedReassignReport = null
+                        selectedReassignCollector = null
+                        reassignError = null
+                    }
+                ) {
+                    Text("Cancel", color = EcoGreen)
+                }
             }
         )
     }
 }
-// =========================================================
+
+// REASSIGN GARBAGE COLLECTOR DIALOG
+
+@Composable
+private fun ReassignCollectorDialog(
+    report: WasteReport,
+    accessToken: String,
+    onDismiss: () -> Unit,
+    onRequestReassign: (GarbageCollectorOption) -> Unit
+) {
+    var availableCollectors by remember {
+        mutableStateOf<List<GarbageCollectorOption>>(emptyList())
+    }
+
+    var selectedCollector by remember {
+        mutableStateOf<GarbageCollectorOption?>(null)
+    }
+
+    var isLoadingCollectors by remember {
+        mutableStateOf(true)
+    }
+
+    var collectorError by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    // LOAD ACTIVE GARBAGE COLLECTORS
+
+    LaunchedEffect(accessToken) {
+        isLoadingCollectors = true
+        collectorError = null
+
+        try {
+            val response = ApiClient.getCollectors(accessToken)
+            val collectorArray = response.optJSONArray("collectors")
+
+            val loadedCollectors = mutableListOf<GarbageCollectorOption>()
+
+            if (collectorArray != null) {
+                for (i in 0 until collectorArray.length()) {
+                    val item = collectorArray.optJSONObject(i)
+                        ?: continue
+
+                    if (!item.optBoolean("is_active", false)) {
+                        continue
+                    }
+
+                    val userId = item.optString("user_id", "")
+
+                    if (userId.toIntOrNull() == null) {
+                        continue
+                    }
+
+                    val fullName = item.optString(
+                        "full_name",
+                        "Unknown Collector"
+                    ).takeUnless {
+                        it.isBlank() || it == "null"
+                    } ?: "Unknown Collector"
+
+                    val barangayName =
+                        item.optJSONObject("barangays")
+                            ?.optString("barangay_name")
+                            ?.takeIf {
+                                !it.isNullOrBlank() && it != "null"
+                            } ?: "Unassigned Area"
+
+                    loadedCollectors.add(
+                        GarbageCollectorOption(
+                            collectorId = userId,
+                            name = fullName,
+                            assignedArea = barangayName
+                        )
+                    )
+                }
+            }
+
+            availableCollectors = loadedCollectors
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            collectorError =
+                e.message ?: "Could not load collectors. Please try again."
+        } finally {
+            isLoadingCollectors = false
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = White,
+        shape = RoundedCornerShape(12.dp),
+        title = {
+            Text(
+                text = "Edit Assigned Garbage Collector",
+                color = EcoDarkGreen,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = "Report ${report.reportId}",
+                    color = EcoTextGreen,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Text(
+                    text = "Assigned Garbage Collector",
+                    color = EcoTextGreen,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Text(
+                    text = "Currently assigned: ${report.assignedTo}",
+                    color = Color.Gray,
+                    fontSize = 12.sp
+                )
+
+                when {
+                    isLoadingCollectors -> {
+                        Text(
+                            text = "Loading garbage collectors...",
+                            color = Color.Gray,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    collectorError != null -> {
+                        Text(
+                            text = collectorError ?: "",
+                            color = RejectRed,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    availableCollectors.isEmpty() -> {
+                        Text(
+                            text = "No active garbage collectors found.",
+                            color = Color.Gray,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(220.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            items(
+                                items = availableCollectors,
+                                key = { it.collectorId }
+                            ) { collector ->
+
+                                val isCurrentCollector =
+                                    collector.name.equals(
+                                        report.assignedTo,
+                                        ignoreCase = true
+                                    )
+
+                                val isSelected =
+                                    selectedCollector == collector
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            color = if (isSelected) {
+                                                EcoLightGreen
+                                            } else {
+                                                White
+                                            },
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .border(
+                                            width = 1.dp,
+                                            color = if (isSelected) {
+                                                EcoGreen
+                                            } else {
+                                                Color(0xFFE0E7E1)
+                                            },
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable {
+                                            selectedCollector = collector
+                                        }
+                                        .padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = collector.name,
+                                            color = EcoTextGreen,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+
+                                        Text(
+                                            text = collector.assignedArea +
+                                                    if (isCurrentCollector) {
+                                                        " · Currently assigned"
+                                                    } else {
+                                                        ""
+                                                    },
+                                            color = Color(0xFF58A86B),
+                                            fontSize = 11.sp
+                                        )
+                                    }
+
+                                    if (isSelected) {
+                                        Text(
+                                            text = "Selected",
+                                            color = EcoGreen,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    selectedCollector?.let { collector ->
+                        onRequestReassign(collector)
+                    }
+                },
+                enabled = selectedCollector != null &&
+                        !isLoadingCollectors &&
+                        collectorError == null &&
+                        selectedCollector?.name?.equals(
+                            report.assignedTo,
+                            ignoreCase = true
+                        ) != true,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = EcoGreen,
+                    disabledContainerColor = Color(0xFFB7CDBA)
+                )
+            ) {
+                Text("Re-assign")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = EcoGreen)
+            }
+        }
+    )
+}
+
 // SIDEBAR
-// MATCHED TO DASHBOARD SIZE
-// =========================================================
 
 @Composable
 private fun WasteReportSidebar(
@@ -449,7 +1181,6 @@ private fun WasteReportSidebar(
     onAnalyticsClick: () -> Unit,
     onWasteGuideClick: () -> Unit
 ) {
-
     Column(
         modifier = Modifier
             .width(250.dp)
@@ -457,12 +1188,6 @@ private fun WasteReportSidebar(
             .background(EcoDarkGreen)
             .padding(bottom = 20.dp)
     ) {
-
-        // =================================================
-        // ECOTRACK LOGO
-        // SAME AS DASHBOARD
-        // =================================================
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -470,7 +1195,6 @@ private fun WasteReportSidebar(
                 .padding(horizontal = 18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Text(
                 text = "♧EcoTrack",
                 color = White,
@@ -479,33 +1203,22 @@ private fun WasteReportSidebar(
             )
         }
 
-        // =================================================
-        // ADMIN INFORMATION
-        // SAME AS DASHBOARD
-        // =================================================
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(
-                    width = 1.dp,
-                    color = Color(0xFF4A8A50)
-                )
+                .border(1.dp, Color(0xFF4A8A50))
                 .padding(
                     horizontal = 18.dp,
                     vertical = 12.dp
                 )
         ) {
-
             Text(
                 text = "ADMINISTRATOR",
                 color = Color(0xFF9FD6A5),
                 fontSize = 11.sp
             )
 
-            Spacer(
-                modifier = Modifier.height(6.dp)
-            )
+            Spacer(modifier = Modifier.height(6.dp))
 
             Text(
                 text = "System Admin",
@@ -521,24 +1234,13 @@ private fun WasteReportSidebar(
             )
         }
 
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
-
-        // =================================================
-        // DASHBOARD
-        // =================================================
+        Spacer(modifier = Modifier.height(20.dp))
 
         WasteSidebarItem(
             icon = Icons.Default.GridView,
             title = "Dashboard",
-            selected = false,
             onClick = onDashboardClick
         )
-
-        // =================================================
-        // WASTE REPORT
-        // =================================================
 
         WasteSidebarItem(
             icon = Icons.Default.Description,
@@ -546,67 +1248,37 @@ private fun WasteReportSidebar(
             selected = true
         )
 
-        // =================================================
-        // COLLECTORS
-        // =================================================
-
         WasteSidebarItem(
             icon = Icons.Default.LocalShipping,
             title = "Collectors",
-            selected = false,
             onClick = onCollectorsClick
         )
-
-        // =================================================
-        // RESIDENTS
-        // =================================================
 
         WasteSidebarItem(
             icon = Icons.Default.Groups,
             title = "Residents",
-            selected = false,
             onClick = onResidentsClick
         )
-
-        // =================================================
-        // SCHEDULES
-        // =================================================
 
         WasteSidebarItem(
             icon = Icons.Default.CalendarMonth,
             title = "Schedules",
-            selected = false,
             onClick = onScheduleClick
         )
-
-        // =================================================
-        // ANALYTICS
-        // =================================================
 
         WasteSidebarItem(
             icon = Icons.Default.BarChart,
             title = "Analytics",
-            selected = false,
             onClick = onAnalyticsClick
         )
-
-        // =================================================
-        // WASTE GUIDE
-        // =================================================
 
         WasteSidebarItem(
             icon = Icons.Default.MenuBook,
             title = "Waste Guide",
-            selected = false,
             onClick = onWasteGuideClick
         )
     }
 }
-
-// =========================================================
-// SIDEBAR ITEM
-// SAME DIMENSIONS AS DASHBOARD
-// =========================================================
 
 @Composable
 private fun WasteSidebarItem(
@@ -615,7 +1287,6 @@ private fun WasteSidebarItem(
     selected: Boolean = false,
     onClick: () -> Unit = {}
 ) {
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -632,13 +1303,10 @@ private fun WasteSidebarItem(
                 },
                 shape = RoundedCornerShape(22.dp)
             )
-            .clickable {
-                onClick()
-            }
+            .clickable { onClick() }
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Icon(
             imageVector = icon,
             contentDescription = title,
@@ -646,9 +1314,7 @@ private fun WasteSidebarItem(
             modifier = Modifier.size(19.dp)
         )
 
-        Spacer(
-            modifier = Modifier.width(14.dp)
-        )
+        Spacer(modifier = Modifier.width(14.dp))
 
         Text(
             text = title,
@@ -658,28 +1324,21 @@ private fun WasteSidebarItem(
     }
 }
 
-// =========================================================
 // TOP BAR
-// SAME DIMENSIONS AS DASHBOARD
-// =========================================================
 
 @Composable
 private fun WasteReportTopBar(
     onNotificationClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(62.dp)
-            .background(
-                Color(0xFFE0F2E5)
-            )
+            .background(Color(0xFFE0F2E5))
             .padding(horizontal = 25.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Icon(
             imageVector = Icons.Default.Menu,
             contentDescription = "Menu",
@@ -687,9 +1346,7 @@ private fun WasteReportTopBar(
             modifier = Modifier.size(23.dp)
         )
 
-        Spacer(
-            modifier = Modifier.width(15.dp)
-        )
+        Spacer(modifier = Modifier.width(15.dp))
 
         Text(
             text = "Waste Reports",
@@ -698,18 +1355,9 @@ private fun WasteReportTopBar(
             fontWeight = FontWeight.Medium
         )
 
-        Spacer(
-            modifier = Modifier.weight(1f)
-        )
+        Spacer(modifier = Modifier.weight(1f))
 
-        // =================================================
-        // NOTIFICATION
-        // =================================================
-
-        IconButton(
-            onClick = onNotificationClick
-        ) {
-
+        IconButton(onClick = onNotificationClick) {
             Icon(
                 imageVector = Icons.Default.Notifications,
                 contentDescription = "Notifications",
@@ -718,14 +1366,7 @@ private fun WasteReportTopBar(
             )
         }
 
-        // =================================================
-        // PROFILE
-        // =================================================
-
-        IconButton(
-            onClick = onProfileClick
-        ) {
-
+        IconButton(onClick = onProfileClick) {
             Icon(
                 imageVector = Icons.Default.AccountCircle,
                 contentDescription = "Profile",
@@ -736,9 +1377,7 @@ private fun WasteReportTopBar(
     }
 }
 
-// =========================================================
 // FILTER BUTTON
-// =========================================================
 
 @Composable
 private fun WasteFilterButton(
@@ -746,75 +1385,53 @@ private fun WasteFilterButton(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-
     Box(
         modifier = Modifier
             .height(24.dp)
             .background(
-                color = if (selected) {
-                    EcoGreen
-                } else {
-                    White
-                },
+                color = if (selected) EcoGreen else White,
                 shape = RoundedCornerShape(12.dp)
             )
             .border(
                 width = 1.dp,
-                color = if (selected) {
-                    EcoGreen
-                } else {
-                    Color(0xFFE0E0E0)
-                },
+                color = if (selected) EcoGreen else Color(0xFFE0E0E0),
                 shape = RoundedCornerShape(12.dp)
             )
-            .clickable {
-                onClick()
-            }
-            .padding(
-                horizontal = 12.dp
-            ),
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center
     ) {
-
         Text(
             text = text,
-            color = if (selected) {
-                White
-            } else {
-                EcoGreen
-            },
+            color = if (selected) White else EcoGreen,
             fontSize = 12.sp
         )
     }
 }
 
-// =========================================================
 // SEARCH BAR
-// =========================================================
 
 @Composable
 private fun SearchBar(
     searchText: String,
     onSearchTextChange: (String) -> Unit
 ) {
-
     Row(
         modifier = Modifier
             .width(180.dp)
             .height(28.dp)
             .background(
-                color = SearchBackground,
-                shape = RoundedCornerShape(15.dp)
+                SearchBackground,
+                RoundedCornerShape(15.dp)
             )
             .border(
-                width = 1.dp,
-                color = EcoBorder,
-                shape = RoundedCornerShape(15.dp)
+                1.dp,
+                EcoBorder,
+                RoundedCornerShape(15.dp)
             )
             .padding(horizontal = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Icon(
             imageVector = Icons.Default.Search,
             contentDescription = "Search",
@@ -822,15 +1439,13 @@ private fun SearchBar(
             modifier = Modifier.size(14.dp)
         )
 
-        Spacer(
-            modifier = Modifier.width(5.dp)
-        )
+        Spacer(modifier = Modifier.width(5.dp))
 
-        androidx.compose.foundation.text.BasicTextField(
+        BasicTextField(
             value = searchText,
             onValueChange = onSearchTextChange,
             singleLine = true,
-            textStyle = androidx.compose.ui.text.TextStyle(
+            textStyle = TextStyle(
                 fontSize = 12.sp,
                 color = EcoTextGreen
             ),
@@ -839,9 +1454,7 @@ private fun SearchBar(
     }
 }
 
-// =========================================================
-// TABLE
-// =========================================================
+// REPORT TABLE
 
 @Composable
 private fun WasteReportTable(
@@ -850,110 +1463,54 @@ private fun WasteReportTable(
     onAssignClick: (WasteReport) -> Unit,
     onViewClick: (WasteReport) -> Unit
 ) {
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 4.dp,
-                shape = RoundedCornerShape(13.dp)
+                4.dp,
+                RoundedCornerShape(13.dp)
             )
             .background(
-                color = White,
-                shape = RoundedCornerShape(13.dp)
+                White,
+                RoundedCornerShape(13.dp)
             )
     ) {
-        // =================================================
-        // TABLE HEADER
-        // =================================================
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    Color(0xFFF2FAF4)
-                )
+                .background(Color(0xFFF2FAF4))
                 .padding(
                     horizontal = 12.dp,
                     vertical = 10.dp
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
-            TableHeader(
-                text = "REPORT\nID",
-                modifier = Modifier.weight(0.8f)
-            )
-
-            TableHeader(
-                text = "RESIDENT",
-                modifier = Modifier.weight(1.15f)
-            )
-
-            TableHeader(
-                text = "CATEGORY",
-                modifier = Modifier.weight(1.55f)
-            )
-
-            TableHeader(
-                text = "LOCATION",
-                modifier = Modifier.weight(1.2f)
-            )
-
-            TableHeader(
-                text = "DATE",
-                modifier = Modifier.weight(1.25f)
-            )
-
-            TableHeader(
-                text = "ASSIGNED TO",
-                modifier = Modifier.weight(1.3f)
-            )
-
-            TableHeader(
-                text = "STATUS",
-                modifier = Modifier.weight(1f)
-            )
-
-            TableHeader(
-                text = "ACTION",
-                modifier = Modifier.weight(0.9f)
-            )
+            TableHeader("REPORT\nID", Modifier.weight(0.8f))
+            TableHeader("RESIDENT", Modifier.weight(1.15f))
+            TableHeader("CATEGORY", Modifier.weight(1.55f))
+            TableHeader("LOCATION", Modifier.weight(1.2f))
+            TableHeader("DATE", Modifier.weight(1.25f))
+            TableHeader("ASSIGNED TO", Modifier.weight(1.3f))
+            TableHeader("STATUS", Modifier.weight(1f))
+            TableHeader("ACTION", Modifier.weight(0.9f))
         }
 
-        // =================================================
-        // REPORT ROWS
-        // =================================================
-
         reports.forEach { report ->
-
             WasteReportRow(
                 report = report,
-                onReviewClick = {
-                    onReviewClick(report)
-                },
-                onAssignClick = {
-                    onAssignClick(report)
-                },
                 onViewClick = {
                     onViewClick(report)
                 }
             )
         }
 
-        // =================================================
-        // NO RESULTS
-        // =================================================
-
         if (reports.isEmpty()) {
-
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(100.dp),
                 contentAlignment = Alignment.Center
             ) {
-
                 Text(
                     text = "No waste reports found.",
                     color = Color.Gray,
@@ -964,16 +1521,11 @@ private fun WasteReportTable(
     }
 }
 
-// =========================================================
-// TABLE HEADER
-// =========================================================
-
 @Composable
 private fun TableHeader(
     text: String,
     modifier: Modifier
 ) {
-
     Text(
         text = text,
         modifier = modifier,
@@ -983,18 +1535,11 @@ private fun TableHeader(
     )
 }
 
-// =========================================================
-// TABLE ROW
-// =========================================================
-
 @Composable
 private fun WasteReportRow(
     report: WasteReport,
-    onReviewClick: () -> Unit,
-    onAssignClick: () -> Unit,
     onViewClick: () -> Unit
 ) {
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1004,130 +1549,34 @@ private fun WasteReportRow(
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        TableCell(report.reportId, Modifier.weight(0.8f))
+        TableCell(report.resident, Modifier.weight(1.15f))
+        TableCell(report.category, Modifier.weight(1.55f))
+        TableCell(report.location, Modifier.weight(1.2f))
+        TableCell(report.date, Modifier.weight(1.25f))
+        TableCell(report.assignedTo, Modifier.weight(1.3f))
 
-        // REPORT ID
-
-        TableCell(
-            text = report.reportId,
-            modifier = Modifier.weight(0.8f)
-        )
-
-        // RESIDENT
-
-        TableCell(
-            text = report.resident,
-            modifier = Modifier.weight(1.15f)
-        )
-
-        // CATEGORY
-
-        TableCell(
-            text = report.category,
-            modifier = Modifier.weight(1.55f)
-        )
-
-        // LOCATION
-
-        TableCell(
-            text = report.location,
-            modifier = Modifier.weight(1.2f)
-        )
-
-        // DATE
-
-        TableCell(
-            text = report.date,
-            modifier = Modifier.weight(1.25f)
-        )
-
-        // ASSIGNED TO
-
-        TableCell(
-            text = report.assignedTo,
-            modifier = Modifier.weight(1.3f)
-        )
-
-        // STATUS
-
-        Box(
-            modifier = Modifier.weight(1f)
-        ) {
-
-            StatusBadge(
-                status = report.status
-            )
+        Box(modifier = Modifier.weight(1f)) {
+            StatusBadge(report.status)
         }
 
-        // ACTION
-
-        Box(
-            modifier = Modifier.weight(0.9f)
-        ) {
-
-            when (report.status) {
-
-                "Pending" -> {
-                    ActionButton(
-                        text = "Assign",
-                        backgroundColor = EcoGreen,
-                        textColor = White,
-                        onClick = onAssignClick
-                    )
-                }
-
-                "In Progress" -> {
-                    ActionButton(
-                        text = "View",
-                        backgroundColor = White,
-                        textColor = EcoGreen,
-                        borderColor = EcoGreen,
-                        onClick = onViewClick
-                    )
-                }
-
-                "For Verification" -> {
-                    ActionButton(
-                        text = "Review",
-                        backgroundColor = Color(0xFFFF5B0A),
-                        textColor = White,
-                        onClick = onReviewClick
-                    )
-                }
-
-                "Resolved" -> {
-                    ActionButton(
-                        text = "View",
-                        backgroundColor = White,
-                        textColor = EcoGreen,
-                        borderColor = EcoGreen,
-                        onClick = onViewClick
-                    )
-                }
-
-                else -> {
-                    ActionButton(
-                        text = "View",
-                        backgroundColor = White,
-                        textColor = EcoGreen,
-                        borderColor = EcoGreen,
-                        onClick = onViewClick
-                    )
-                }
-            }
+        Box(modifier = Modifier.weight(0.9f)) {
+            ActionButton(
+                text = "View",
+                backgroundColor = White,
+                textColor = EcoGreen,
+                borderColor = EcoGreen,
+                onClick = onViewClick
+            )
         }
     }
 }
-
-// =========================================================
-// TABLE CELL
-// =========================================================
 
 @Composable
 private fun TableCell(
     text: String,
     modifier: Modifier
 ) {
-
     Text(
         text = text,
         modifier = modifier,
@@ -1136,20 +1585,15 @@ private fun TableCell(
     )
 }
 
-// =========================================================
 // STATUS BADGE
-// =========================================================
+// "For Verification" is a status, not a filter button.
 
 @Composable
-private fun StatusBadge(
-    status: String
-) {
-
+private fun StatusBadge(status: String) {
     val backgroundColor: Color
     val textColor: Color
 
     when (status) {
-
         "For Verification" -> {
             backgroundColor = Color(0xFFFFD0D0)
             textColor = Color(0xFFE56A6A)
@@ -1170,6 +1614,11 @@ private fun StatusBadge(
             textColor = Color(0xFF3C8550)
         }
 
+        "Rejected" -> {
+            backgroundColor = Color(0xFFFFDADA)
+            textColor = RejectRed
+        }
+
         else -> {
             backgroundColor = Color.LightGray
             textColor = Color.DarkGray
@@ -1182,8 +1631,8 @@ private fun StatusBadge(
         fontSize = 12.sp,
         modifier = Modifier
             .background(
-                color = backgroundColor,
-                shape = RoundedCornerShape(10.dp)
+                backgroundColor,
+                RoundedCornerShape(10.dp)
             )
             .padding(
                 horizontal = 7.dp,
@@ -1192,9 +1641,7 @@ private fun StatusBadge(
     )
 }
 
-// =========================================================
 // ACTION BUTTON
-// =========================================================
 
 @Composable
 private fun ActionButton(
@@ -1204,24 +1651,21 @@ private fun ActionButton(
     borderColor: Color = Color.Transparent,
     onClick: () -> Unit
 ) {
-
     Text(
         text = text,
         color = textColor,
         fontSize = 12.sp,
         modifier = Modifier
             .background(
-                color = backgroundColor,
-                shape = RoundedCornerShape(10.dp)
+                backgroundColor,
+                RoundedCornerShape(10.dp)
             )
             .border(
-                width = 1.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(10.dp)
+                1.dp,
+                borderColor,
+                RoundedCornerShape(10.dp)
             )
-            .clickable {
-                onClick()
-            }
+            .clickable { onClick() }
             .padding(
                 horizontal = 9.dp,
                 vertical = 4.dp

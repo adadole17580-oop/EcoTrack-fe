@@ -1,5 +1,7 @@
+
 package edp.app.ecotrack.screens.notifications
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,8 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -32,10 +32,12 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,6 +45,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import edp.app.ecotrack.network.ApiClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 // =========================================================
 // COLORS
@@ -68,29 +79,43 @@ private data class NotificationData(
     val isNew: Boolean
 )
 
-private val notificationList = listOf(
-    NotificationData(
-        icon = Icons.Default.Warning,
-        title = "New report requiring assignment",
-        description = "Report #1024 submitted by Maria Santos — Overflowing Garbage at Rizal St., Barangay Area.",
-        time = "10m",
-        isNew = true
-    ),
-    NotificationData(
-        icon = Icons.Default.Schedule,
-        title = "Schedule updated",
-        description = "Schedule #27 for Barangay Area has been modified — time changed to 9:30 AM.",
-        time = "3h ago",
-        isNew = true
-    ),
-    NotificationData(
-        icon = Icons.Default.CheckCircle,
-        title = "Report resolved",
-        description = "Report #1021 has been marked resolved after admin approval of collector proof.",
-        time = "Yesterday",
-        isNew = false
-    )
-)
+// =========================================================
+// FORMAT NOTIFICATION DATE
+// =========================================================
+
+private fun formatNotificationTime(createdAt: String): String {
+    if (createdAt.isBlank()) return ""
+
+    return try {
+        val inputFormats = listOf(
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.getDefault()),
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX", Locale.getDefault()),
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        )
+
+        val date = inputFormats.firstNotNullOfOrNull { format ->
+            format.isLenient = false
+            try {
+                format.parse(createdAt)
+            } catch (_: Exception) {
+                null
+            }
+        } ?: return createdAt
+
+        val difference = System.currentTimeMillis() - date.time
+
+        when {
+            difference < 60_000 -> "Just now"
+            difference < 3_600_000 -> "${difference / 60_000}m ago"
+            difference < 86_400_000 -> "${difference / 3_600_000}h ago"
+            difference < 172_800_000 -> "Yesterday"
+            else -> SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+                .format(date)
+        }
+    } catch (_: Exception) {
+        createdAt
+    }
+}
 
 // =========================================================
 // NOTIFICATIONS SCREEN
@@ -98,6 +123,7 @@ private val notificationList = listOf(
 
 @Composable
 fun NotificationsScreen(
+    accessToken: String,
     onDashboardClick: () -> Unit = {},
     onWasteReportClick: () -> Unit = {},
     onCollectorsClick: () -> Unit = {},
@@ -108,13 +134,116 @@ fun NotificationsScreen(
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {}
 ) {
+    var notificationList by remember {
+        mutableStateOf<List<NotificationData>>(emptyList())
+    }
+
+    var isLoading by remember {
+        mutableStateOf(true)
+    }
+
+    var errorMessage by remember {
+        mutableStateOf("")
+    }
+
+    // Load notifications from the backend.
+    LaunchedEffect(accessToken) {
+        if (accessToken.isBlank()) {
+            errorMessage = "Please log in again."
+            isLoading = false
+            return@LaunchedEffect
+        }
+
+        isLoading = true
+        errorMessage = ""
+
+        try {
+            val response = withContext(Dispatchers.IO) {
+                ApiClient.getNotifications(accessToken)
+            }
+
+            if (response.optString("status") == "OK") {
+                val array = response.optJSONArray("notifications")
+                val loadedNotifications = mutableListOf<NotificationData>()
+
+                if (array != null) {
+                    for (i in 0 until array.length()) {
+                        val item = array.optJSONObject(i) ?: continue
+
+                        val title = item.optString(
+                            "title",
+                            "Notification"
+                        )
+
+                        val description = item.optString(
+                            "message",
+                            ""
+                        )
+
+                        val type = item.optString(
+                            "notification_type",
+                            item.optString("type", "")
+                        )
+
+                        val icon = when {
+                            type.contains("schedule", ignoreCase = true) ||
+                                    title.contains("schedule", ignoreCase = true) ->
+                                Icons.Default.Schedule
+
+                            type.contains("resolved", ignoreCase = true) ||
+                                    title.contains("resolved", ignoreCase = true) ->
+                                Icons.Default.CheckCircle
+
+                            type.contains("report", ignoreCase = true) ||
+                                    title.contains("report", ignoreCase = true) ->
+                                Icons.Default.Warning
+
+                            else -> Icons.Default.Notifications
+                        }
+
+                        val createdAt = item.optString(
+                            "created_at",
+                            ""
+                        )
+
+                        loadedNotifications.add(
+                            NotificationData(
+                                icon = icon,
+                                title = title,
+                                description = description,
+                                time = formatNotificationTime(createdAt),
+                                isNew = !item.optBoolean("is_read", false)
+                            )
+                        )
+                    }
+                }
+
+                notificationList = loadedNotifications
+            } else {
+                errorMessage = response.optString(
+                    "message",
+                    "Unable to load notifications."
+                )
+            }
+        } catch (e: Exception) {
+            errorMessage = e.message
+                ?: "Unable to load notifications."
+
+            Log.e(
+                "ECO_TRACK",
+                "Notifications loading failed",
+                e
+            )
+        } finally {
+            isLoading = false
+        }
+    }
 
     Row(
         modifier = Modifier
             .fillMaxSize()
             .background(EcoLightGreen)
     ) {
-
         // =====================================================
         // SIDEBAR
         // =====================================================
@@ -138,19 +267,14 @@ fun NotificationsScreen(
                 .fillMaxHeight()
                 .weight(1f)
         ) {
-
-            // =================================================
             // TOP BAR
-            // =================================================
 
             NotificationsTopBar(
                 onNotificationClick = onNotificationClick,
                 onProfileClick = onProfileClick
             )
 
-            // =================================================
             // PAGE CONTENT
-            // =================================================
 
             Column(
                 modifier = Modifier
@@ -160,7 +284,6 @@ fun NotificationsScreen(
                         vertical = 18.dp
                     )
             ) {
-
                 Text(
                     text = "Notifications",
                     color = EcoTextGreen,
@@ -172,9 +295,7 @@ fun NotificationsScreen(
                     modifier = Modifier.height(16.dp)
                 )
 
-                // =================================================
                 // NOTIFICATION CONTAINER
-                // =================================================
 
                 Column(
                     modifier = Modifier
@@ -189,16 +310,45 @@ fun NotificationsScreen(
                             shape = RoundedCornerShape(8.dp)
                         )
                 ) {
+                    when {
+                        isLoading -> {
+                            Text(
+                                text = "Loading notifications...",
+                                modifier = Modifier.padding(20.dp),
+                                color = EcoTextGreen,
+                                fontSize = 13.sp
+                            )
+                        }
 
-                    notificationList.forEach { notification ->
+                        errorMessage.isNotBlank() -> {
+                            Text(
+                                text = errorMessage,
+                                modifier = Modifier.padding(20.dp),
+                                color = Color.Red,
+                                fontSize = 13.sp
+                            )
+                        }
 
-                        NotificationItem(
-                            icon = notification.icon,
-                            title = notification.title,
-                            description = notification.description,
-                            time = notification.time,
-                            isNew = notification.isNew
-                        )
+                        notificationList.isEmpty() -> {
+                            Text(
+                                text = "No notifications yet.",
+                                modifier = Modifier.padding(20.dp),
+                                color = EcoTextGreen,
+                                fontSize = 13.sp
+                            )
+                        }
+
+                        else -> {
+                            notificationList.forEach { notification ->
+                                NotificationItem(
+                                    icon = notification.icon,
+                                    title = notification.title,
+                                    description = notification.description,
+                                    time = notification.time,
+                                    isNew = notification.isNew
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -220,17 +370,13 @@ private fun NotificationsSidebar(
     onAnalyticsClick: () -> Unit,
     onWasteGuideClick: () -> Unit
 ) {
-
     Column(
         modifier = Modifier
             .width(250.dp)
             .fillMaxHeight()
             .background(EcoDarkGreen)
     ) {
-
-        // =================================================
         // LOGO
-        // =================================================
 
         Row(
             modifier = Modifier
@@ -239,7 +385,6 @@ private fun NotificationsSidebar(
                 .padding(horizontal = 18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Text(
                 text = "♧EcoTrack",
                 color = White,
@@ -248,16 +393,13 @@ private fun NotificationsSidebar(
             )
         }
 
-        // =================================================
         // ADMINISTRATOR
-        // =================================================
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(EcoDarkGreen)
         ) {
-
             Text(
                 text = "ADMINISTRATOR",
                 color = Color(0xFFA8D6AA),
@@ -278,25 +420,20 @@ private fun NotificationsSidebar(
                 text = "System Admin",
                 color = White,
                 fontSize = 12.sp,
-                modifier = Modifier.padding(
-                    horizontal = 18.dp
-                )
+                modifier = Modifier.padding(horizontal = 18.dp)
             )
 
             Text(
                 text = "admin@ecotrack.gov.ph",
                 color = Color(0xFFB9DDBD),
                 fontSize = 10.sp,
-                modifier = Modifier.padding(
-                    horizontal = 18.dp
-                )
+                modifier = Modifier.padding(horizontal = 18.dp)
             )
 
             Spacer(
                 modifier = Modifier.height(12.dp)
             )
 
-            // 1DP LINE BELOW EMAIL
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -309,9 +446,7 @@ private fun NotificationsSidebar(
             )
         }
 
-        // =================================================
         // MENU
-        // =================================================
 
         NotificationsSidebarItem(
             icon = Icons.Default.Groups,
@@ -375,7 +510,6 @@ private fun NotificationsSidebarItem(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -398,7 +532,6 @@ private fun NotificationsSidebarItem(
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Icon(
             imageVector = icon,
             contentDescription = title,
@@ -427,7 +560,6 @@ private fun NotificationsTopBar(
     onNotificationClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -437,24 +569,11 @@ private fun NotificationsTopBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
 
-        // =================================================
-        // MENU ICON
-        // =================================================
-
-        Icon(
-            imageVector = Icons.Default.Menu,
-            contentDescription = "Menu",
-            tint = EcoDarkGreen,
-            modifier = Modifier.size(23.dp)
-        )
-
         Spacer(
             modifier = Modifier.width(15.dp)
         )
 
-        // =================================================
         // TITLE
-        // =================================================
 
         Text(
             text = "Notifications",
@@ -467,14 +586,11 @@ private fun NotificationsTopBar(
             modifier = Modifier.weight(1f)
         )
 
-        // =================================================
         // BELL BUTTON
-        // =================================================
 
         androidx.compose.material3.IconButton(
             onClick = onNotificationClick
         ) {
-
             Icon(
                 imageVector = Icons.Default.Notifications,
                 contentDescription = "Notifications",
@@ -483,14 +599,11 @@ private fun NotificationsTopBar(
             )
         }
 
-        // =================================================
         // PROFILE BUTTON
-        // =================================================
 
         androidx.compose.material3.IconButton(
             onClick = onProfileClick
         ) {
-
             Icon(
                 imageVector = Icons.Default.AccountCircle,
                 contentDescription = "Profile",
@@ -513,7 +626,6 @@ private fun NotificationItem(
     time: String,
     isNew: Boolean
 ) {
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -523,10 +635,7 @@ private fun NotificationItem(
             ),
         verticalAlignment = Alignment.Top
     ) {
-
-        // =================================================
         // DOT
-        // =================================================
 
         Box(
             modifier = Modifier
@@ -546,9 +655,7 @@ private fun NotificationItem(
             modifier = Modifier.width(10.dp)
         )
 
-        // =================================================
         // ICON
-        // =================================================
 
         Icon(
             imageVector = icon,
@@ -563,14 +670,11 @@ private fun NotificationItem(
             modifier = Modifier.width(12.dp)
         )
 
-        // =================================================
         // TEXT
-        // =================================================
 
         Column(
             modifier = Modifier.weight(1f)
         ) {
-
             Text(
                 text = title,
                 color = EcoTextGreen,
@@ -600,12 +704,9 @@ private fun NotificationItem(
             )
         }
 
-        // =================================================
         // NEW BADGE
-        // =================================================
 
         if (isNew) {
-
             Text(
                 text = "New",
                 color = EcoGreen,

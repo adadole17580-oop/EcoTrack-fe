@@ -1,5 +1,5 @@
 
-package edp.app.ecotrack
+package edp.app.ecotrack.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,7 +11,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -23,7 +28,11 @@ fun BackendTestScreen() {
     var result by remember {
         mutableStateOf("Tap the button to test your backend.")
     }
-    var isLoading by remember { mutableStateOf(false) }
+
+    var isLoading by remember {
+        mutableStateOf(false)
+    }
+
     val scope = rememberCoroutineScope()
 
     Column(
@@ -45,11 +54,16 @@ fun BackendTestScreen() {
             onClick = {
                 scope.launch {
                     isLoading = true
+
                     result = try {
-                        ApiClient.testConnection()
+                        val response = ApiClient.testConnection()
+                        response.toString(2)
                     } catch (e: Exception) {
-                        "Connection failed: ${e.message ?: "Unknown error"}"
+                        "Connection failed: ${
+                            e.message ?: "Unknown error"
+                        }"
                     }
+
                     isLoading = false
                 }
             }

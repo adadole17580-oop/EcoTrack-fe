@@ -1,6 +1,8 @@
+
 package edp.app.ecotrack.screens.waste_report
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -8,6 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -26,24 +30,26 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 
 private val EcoGreen = Color(0xFF286F32)
 private val EcoDarkGreen = Color(0xFF216B2A)
 private val EcoLightGreen = Color(0xFFE6F5EA)
 private val EcoBorder = Color(0xFFB7DCC0)
 private val EcoTextGreen = Color(0xFF286B32)
-
 private val White = Color.White
 private val GrayText = Color(0xFF66756A)
 
@@ -56,54 +62,70 @@ private val InProgressText = Color(0xFF39924A)
 private val ResolvedBg = Color(0xFFC5DEC9)
 private val ResolvedText = Color(0xFF3C8550)
 
-/**
+private val RejectRed = Color(0xFFDC3545)
+
+/*
  * View Waste Report popup.
  *
- * In Progress:
- * - Resident information
- * - Before/resident photo
- * - Report history
+ * Pending:
+ * Reject, Assign
  *
- * Resolved:
- * - Resident information
- * - Before/resident photo
- * - After/collector photo
- * - Report history
- * - Date Resolved
+ * In Progress:
+ * Reject, Edit
+ *
+ * For Verification:
+ * Return to In Progress, Accept & Resolve
+ *
+ * Resolved, Cancelled, Rejected:
+ * Viewing only
  */
+
 @Composable
 fun ViewReportScreen(
     report: WasteReport,
     onDismiss: () -> Unit = {},
     @DrawableRes residentPhotoRes: Int? = null,
     @DrawableRes collectorPhotoRes: Int? = null,
-    dateResolved: String? = null
+    dateResolved: String? = null,
+    onReject: () -> Unit = {},
+    onAssign: () -> Unit = {},
+    onEdit: () -> Unit = {},
+    onReturnToProgress: () -> Unit = {},
+    onAcceptResolve: () -> Unit = {},
+    onSendForVerification: () -> Unit = {}
 ) {
+    val status = report.status.trim()
 
-    val isResolved = report.status == "Resolved"
+    val isResolved = status.equals("Resolved", ignoreCase = true)
+    val isPending = status.equals("Pending", ignoreCase = true)
+    val isInProgress = status.equals("In Progress", ignoreCase = true)
+
+    val isForVerification =
+        status.equals("For Verification", ignoreCase = true) ||
+                status.equals("Waiting for Verification", ignoreCase = true)
+
+    val isViewingOnly =
+        isResolved ||
+                status.equals("Cancelled", ignoreCase = true) ||
+                status.equals("Rejected", ignoreCase = true)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-
         containerColor = White,
-
         shape = RoundedCornerShape(7.dp),
 
         title = {
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
-
                     Text(
                         text = report.reportId,
                         color = EcoGreen,
-                        fontSize = 7.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
 
@@ -113,29 +135,31 @@ fun ViewReportScreen(
                         fontSize = 21.sp,
                         fontWeight = FontWeight.Bold
                     )
+
+                    Spacer(modifier = Modifier.height(5.dp))
+
+                    StatusBadge(status = status)
                 }
 
-                StatusBadge(
-                    status = report.status
-                )
-
-                Spacer(
-                    modifier = Modifier.width(5.dp)
-                )
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close report",
+                        tint = EcoDarkGreen
+                    )
+                }
             }
         },
 
         text = {
-
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-
-                // =================================================
                 // REPORT INFORMATION
-                // =================================================
-
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -149,9 +173,8 @@ fun ViewReportScreen(
                             shape = RoundedCornerShape(8.dp)
                         )
                         .padding(9.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-
                     ViewInfoRow(
                         icon = Icons.Default.Assignment,
                         label = "Report ID",
@@ -195,7 +218,6 @@ fun ViewReportScreen(
                     )
 
                     if (isResolved && !dateResolved.isNullOrBlank()) {
-
                         ViewInfoRow(
                             icon = Icons.Default.CheckCircle,
                             label = "Date Resolved",
@@ -204,10 +226,7 @@ fun ViewReportScreen(
                     }
                 }
 
-                // =================================================
-                // PHOTOS
-                // =================================================
-
+                // REPORT PHOTOS
                 Text(
                     text = if (isResolved) {
                         "BEFORE & AFTER PHOTOS"
@@ -220,17 +239,16 @@ fun ViewReportScreen(
                 )
 
                 if (isResolved) {
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-
                         ViewPhoto(
                             title = "Before",
                             photoRes = residentPhotoRes,
                             backgroundColor = PhotoGreen,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            photoUrl = report.photoUrl
                         )
 
                         ViewPhoto(
@@ -240,21 +258,17 @@ fun ViewReportScreen(
                             modifier = Modifier.weight(1f)
                         )
                     }
-
                 } else {
-
                     ViewPhoto(
                         title = "Before",
                         photoRes = residentPhotoRes,
                         backgroundColor = PhotoGreen,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        photoUrl = report.photoUrl
                     )
                 }
 
-                // =================================================
                 // REPORT HISTORY
-                // =================================================
-
                 Text(
                     text = "REPORT HISTORY",
                     color = EcoTextGreen,
@@ -267,62 +281,123 @@ fun ViewReportScreen(
                     isResolved = isResolved,
                     dateResolved = dateResolved
                 )
+
+                // STATUS-SPECIFIC ACTIONS
+                if (isViewingOnly) {
+                    Text(
+                        text = "Viewing only",
+                        color = GrayText,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        when {
+                            isPending -> {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    ReportActionButton(
+                                        text = "Reject",
+                                        backgroundColor = RejectRed,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = onReject
+                                    )
+
+                                    ReportActionButton(
+                                        text = "Assign",
+                                        backgroundColor = EcoGreen,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = onAssign
+                                    )
+                                }
+                            }
+
+                            isInProgress -> {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    ReportActionButton(
+                                        text = "Reject",
+                                        backgroundColor = RejectRed,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = onReject
+                                    )
+
+                                    ReportActionButton(
+                                        text = "Edit",
+                                        backgroundColor = EcoGreen,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = onEdit
+                                    )
+                                }
+                            }
+
+                            isForVerification -> {
+                                ReportActionButton(
+                                    text = "Return to In Progress",
+                                    backgroundColor = EcoGreen,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = onReturnToProgress
+                                )
+
+                                ReportActionButton(
+                                    text = "Accept & Resolve",
+                                    backgroundColor = EcoGreen,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = onAcceptResolve
+                                )
+                            }
+                        }
+                    }
+                }
             }
         },
 
-        confirmButton = {
-
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = White
-                ),
-                border = androidx.compose.foundation.BorderStroke(
-                    width = 1.dp,
-                    color = EcoGreen
-                ),
-                shape = RoundedCornerShape(9.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(30.dp)
-            ) {
-
-                Text(
-                    text = "Close",
-                    color = EcoGreen,
-                    fontSize = 10.sp
-                )
-            }
-        }
+        confirmButton = {},
+        dismissButton = {}
     )
 }
 
-// =============================================================
 // STATUS BADGE
-// =============================================================
-
 @Composable
-private fun StatusBadge(
-    status: String
-) {
-
-    val background: Color
+private fun StatusBadge(status: String) {
+    val backgroundColor: Color
     val textColor: Color
 
-    when (status) {
-
-        "Resolved" -> {
-            background = ResolvedBg
+    when (status.lowercase()) {
+        "resolved" -> {
+            backgroundColor = ResolvedBg
             textColor = ResolvedText
         }
 
-        "In Progress" -> {
-            background = InProgressBg
+        "in progress" -> {
+            backgroundColor = InProgressBg
             textColor = InProgressText
         }
 
+        "for verification", "waiting for verification" -> {
+            backgroundColor = Color(0xFFFFD0D0)
+            textColor = Color(0xFFE56A6A)
+        }
+
+        "cancelled" -> {
+            backgroundColor = Color(0xFFE5E5E5)
+            textColor = Color(0xFF666666)
+        }
+
+        "rejected" -> {
+            backgroundColor = Color(0xFFFFDADA)
+            textColor = RejectRed
+        }
+
         else -> {
-            background = Color(0xFFF1DFAF)
+            backgroundColor = Color(0xFFF1DFAF)
             textColor = Color(0xFFC0922D)
         }
     }
@@ -330,7 +405,7 @@ private fun StatusBadge(
     Box(
         modifier = Modifier
             .background(
-                color = background,
+                color = backgroundColor,
                 shape = RoundedCornerShape(8.dp)
             )
             .padding(
@@ -338,7 +413,6 @@ private fun StatusBadge(
                 vertical = 3.dp
             )
     ) {
-
         Text(
             text = status,
             color = textColor,
@@ -348,32 +422,25 @@ private fun StatusBadge(
     }
 }
 
-// =============================================================
 // INFORMATION ROW
-// =============================================================
-
 @Composable
 private fun ViewInfoRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     value: String
 ) {
-
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = EcoGreen,
-            modifier = Modifier.size(9.dp)
+            modifier = Modifier.size(14.dp)
         )
 
-        Spacer(
-            modifier = Modifier.width(4.dp)
-        )
+        Spacer(modifier = Modifier.width(6.dp))
 
         Text(
             text = "$label: ",
@@ -390,79 +457,78 @@ private fun ViewInfoRow(
     }
 }
 
-// =============================================================
 // PHOTO
-// =============================================================
 @Composable
 private fun ViewPhoto(
     title: String,
     @DrawableRes photoRes: Int?,
     backgroundColor: Color,
-    modifier: Modifier
+    modifier: Modifier,
+    photoUrl: String? = null
 ) {
-
     Box(
         modifier = modifier
-            .height(45.dp)
+            .height(150.dp)
             .clip(RoundedCornerShape(7.dp))
             .background(backgroundColor),
         contentAlignment = Alignment.Center
     ) {
-
-        if (photoRes != null) {
-
-            androidx.compose.foundation.Image(
-                painter = painterResource(id = photoRes),
-                contentDescription = title,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(65.dp)
-                    .clip(RoundedCornerShape(7.dp)),
-                contentScale = ContentScale.Crop
-            )
-
-        } else {
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-
-                Icon(
-                    imageVector = Icons.Default.Image,
+        when {
+            !photoUrl.isNullOrBlank() -> {
+                AsyncImage(
+                    model = photoUrl,
                     contentDescription = title,
-                    tint = EcoGreen,
-                    modifier = Modifier.size(15.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(7.dp)),
+                    contentScale = ContentScale.Crop
                 )
+            }
 
-                Spacer(
-                    modifier = Modifier.height(3.dp)
+            photoRes != null -> {
+                Image(
+                    painter = painterResource(id = photoRes),
+                    contentDescription = title,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(7.dp)),
+                    contentScale = ContentScale.Crop
                 )
+            }
 
-                Text(
-                    text = title,
-                    color = EcoGreen,
-                    fontSize = 10.sp
-                )
+            else -> {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Image,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(32.dp)
+                    )
+
+                    Text(
+                        text = "$title photo unavailable",
+                        color = Color.DarkGray,
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
     }
 }
 
-// =============================================================
 // REPORT HISTORY
-// =============================================================
-
 @Composable
 private fun ReportHistory(
     report: WasteReport,
     isResolved: Boolean,
     dateResolved: String?
 ) {
-
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
-
         HistoryItem(
             title = "Report submitted by ${report.resident}",
             detail = report.date,
@@ -495,11 +561,10 @@ private fun ReportHistory(
             title = "Status moved to For Verification",
             detail = "Awaiting administrator review",
             icon = Icons.Default.CheckCircle,
-            last = isResolved.not()
+            last = isResolved
         )
 
         if (isResolved) {
-
             HistoryItem(
                 title = "Status moved to Resolved",
                 detail = dateResolved ?: "Report resolved",
@@ -510,63 +575,52 @@ private fun ReportHistory(
     }
 }
 
-// =============================================================
 // HISTORY ITEM
-// =============================================================
-
 @Composable
 private fun HistoryItem(
     title: String,
     detail: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     last: Boolean
 ) {
-
     Row(
         modifier = Modifier.fillMaxWidth()
     ) {
-
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             Box(
                 modifier = Modifier
-                    .size(9.dp)
+                    .size(14.dp)
                     .background(
                         color = EcoGreen,
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
             ) {
-
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     tint = White,
-                    modifier = Modifier.size(5.dp)
+                    modifier = Modifier.size(9.dp)
                 )
             }
 
             if (!last) {
-
                 Box(
                     modifier = Modifier
                         .width(1.dp)
-                        .height(18.dp)
+                        .height(22.dp)
                         .background(EcoBorder)
                 )
             }
         }
 
-        Spacer(
-            modifier = Modifier.width(6.dp)
-        )
+        Spacer(modifier = Modifier.width(8.dp))
 
         Column(
-            modifier = Modifier.padding(bottom = 4.dp)
+            modifier = Modifier.padding(bottom = 5.dp)
         ) {
-
             Text(
                 text = title,
                 color = EcoTextGreen,
@@ -580,5 +634,34 @@ private fun HistoryItem(
                 fontSize = 10.sp
             )
         }
+    }
+}
+
+// ACTION BUTTON
+@Composable
+private fun ReportActionButton(
+    text: String,
+    backgroundColor: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(38.dp),
+        shape = RoundedCornerShape(9.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = backgroundColor,
+            contentColor = White
+        ),
+        contentPadding = PaddingValues(
+            horizontal = 8.dp,
+            vertical = 4.dp
+        )
+    ) {
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }

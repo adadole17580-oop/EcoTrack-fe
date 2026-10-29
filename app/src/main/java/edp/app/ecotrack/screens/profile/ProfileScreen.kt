@@ -1,31 +1,20 @@
+
 package edp.app.ecotrack.screens.profile
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
@@ -34,14 +23,13 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.CircularProgressIndicator
+import kotlinx.coroutines.launch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -51,16 +39,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -69,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import edp.app.ecotrack.network.ApiClient
+import kotlinx.coroutines.launch
 
 // =========================================================
 // ECOTRACK COLORS
@@ -90,6 +77,7 @@ private val FieldBackground = Color(0xFFF0FAF3)
 
 @Composable
 fun ProfileScreen(
+    accessToken: String,
     onDashboardClick: () -> Unit = {},
     onWasteReportClick: () -> Unit = {},
     onCollectorsClick: () -> Unit = {},
@@ -101,22 +89,72 @@ fun ProfileScreen(
     onLogoutClick: () -> Unit = {}
 ) {
     var fullName by remember { mutableStateOf("System Admin") }
-    var email by remember { mutableStateOf("admin@ecotrack.gov.ph") }
-    var phoneNumber by remember { mutableStateOf("0917-555-0100") }
+    var email by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("Not provided") }
+
+    var profileLoading by remember { mutableStateOf(true) }
+    var profileError by remember { mutableStateOf<String?>(null) }
     var profileImageUri by remember { mutableStateOf<Uri?>(null) }
 
     var showEditProfile by remember { mutableStateOf(false) }
-    var showAnnouncementDialog by remember { mutableStateOf(false) }
     var showPasswordDialog by remember { mutableStateOf(false) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+
+    var isSavingProfile by remember { mutableStateOf(false) }
+    var saveProfileError by remember { mutableStateOf<String?>(null) }
+    var saveProfileSuccess by remember { mutableStateOf<String?>(null) }
+
+    val coroutineScope = rememberCoroutineScope()
 
     val imagePickerLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
         ) { uri: Uri? ->
-            if (uri != null) profileImageUri = uri
+            if (uri != null) {
+                profileImageUri = uri
+            }
         }
+
+    // LOAD ADMIN PROFILE FROM BACKEND / SUPABASE
+    LaunchedEffect(accessToken) {
+        profileLoading = true
+        profileError = null
+
+        try {
+            val response = ApiClient.getAdminProfile(accessToken)
+
+            if (response.optString("status") == "OK") {
+                val profile = response.optJSONObject("profile")
+
+                if (profile != null) {
+                    fullName = profile.optString("full_name")
+                        .takeIf { it.isNotBlank() }
+                        ?: "System Admin"
+
+                    email = profile.optString("email")
+                        .takeIf { it.isNotBlank() }
+                        ?: ""
+
+                    phoneNumber = profile.optString("phone")
+                        .takeUnless {
+                            it.isBlank() || it.equals("null", ignoreCase = true)
+                        } ?: "Not provided"
+                } else {
+                    profileError = "Profile data is unavailable."
+                }
+            } else {
+                profileError = response.optString(
+                    "message",
+                    "Could not load admin profile."
+                )
+            }
+        } catch (e: Exception) {
+            profileError = e.message
+                ?: "Could not connect to the backend."
+        } finally {
+            profileLoading = false
+        }
+    }
 
     Row(
         modifier = Modifier
@@ -145,7 +183,10 @@ fun ProfileScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 30.dp, vertical = 18.dp),
+                    .padding(
+                        horizontal = 30.dp,
+                        vertical = 18.dp
+                    ),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
@@ -159,8 +200,15 @@ fun ProfileScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(White, RoundedCornerShape(14.dp))
-                        .border(1.dp, EcoBorder, RoundedCornerShape(14.dp))
+                        .background(
+                            White,
+                            RoundedCornerShape(14.dp)
+                        )
+                        .border(
+                            1.dp,
+                            EcoBorder,
+                            RoundedCornerShape(14.dp)
+                        )
                         .padding(18.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -179,7 +227,7 @@ fun ProfileScreen(
                                 model = profileImageUri,
                                 contentDescription = "Profile Picture",
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                contentScale = ContentScale.Crop
                             )
                         } else {
                             Text(
@@ -193,20 +241,65 @@ fun ProfileScreen(
 
                     Spacer(Modifier.width(16.dp))
 
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text(
                             text = fullName,
                             color = EcoTextGreen,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold
                         )
+
                         Spacer(Modifier.height(4.dp))
+
                         Text(
                             text = email,
                             color = EcoGreen,
                             fontSize = 11.sp
                         )
+
                         Spacer(Modifier.height(4.dp))
+
+                        Text(
+                            text = if (profileLoading) {
+                                "Contact: Loading..."
+                            } else {
+                                "Contact: $phoneNumber"
+                            },
+                            color = EcoGreen,
+                            fontSize = 11.sp
+                        )
+
+                        profileError?.let { message ->
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                text = message,
+                                color = Red,
+                                fontSize = 10.sp
+                            )
+                        }
+
+                        saveProfileSuccess?.let { message ->
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                text = message,
+                                color = EcoGreen,
+                                fontSize = 10.sp
+                            )
+                        }
+
+                        saveProfileError?.let { message ->
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                text = message,
+                                color = Red,
+                                fontSize = 10.sp
+                            )
+                        }
+
+                        Spacer(Modifier.height(4.dp))
+
                         Text(
                             text = "Administrator",
                             color = Color.Gray,
@@ -218,9 +311,20 @@ fun ProfileScreen(
                         modifier = Modifier
                             .clip(RoundedCornerShape(9.dp))
                             .background(White)
-                            .border(1.dp, EcoBorder, RoundedCornerShape(9.dp))
-                            .clickable { showEditProfile = true }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .border(
+                                1.dp,
+                                EcoBorder,
+                                RoundedCornerShape(9.dp)
+                            )
+                            .clickable {
+                                saveProfileError = null
+                                saveProfileSuccess = null
+                                showEditProfile = true
+                            }
+                            .padding(
+                                horizontal = 12.dp,
+                                vertical = 8.dp
+                            ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -229,7 +333,9 @@ fun ProfileScreen(
                             tint = EcoGreen,
                             modifier = Modifier.size(14.dp)
                         )
+
                         Spacer(Modifier.width(5.dp))
+
                         Text(
                             text = "Edit",
                             color = EcoGreen,
@@ -239,25 +345,17 @@ fun ProfileScreen(
                 }
 
                 ProfileOptionButton(
-                    icon = Icons.Default.Campaign,
-                    title = "Send Announcement",
-                    onClick = { showAnnouncementDialog = true }
-                )
-
-                ProfileOptionButton(
                     icon = Icons.Default.Lock,
                     title = "Change Password",
-                    onClick = { showPasswordDialog = true }
-                )
-
-                ProfileOptionButton(
-                    icon = Icons.Default.Settings,
-                    title = "System Settings",
-                    onClick = { showSettingsDialog = true }
+                    onClick = {
+                        showPasswordDialog = true
+                    }
                 )
 
                 ProfileLogoutButton(
-                    onClick = { showLogoutDialog = true }
+                    onClick = {
+                        showLogoutDialog = true
+                    }
                 )
             }
         }
@@ -270,17 +368,78 @@ fun ProfileScreen(
             currentEmail = email,
             currentPhone = phoneNumber,
             profileImageUri = profileImageUri,
+            isSaving = isSavingProfile,
             onPickImage = {
                 imagePickerLauncher.launch("image/*")
             },
             onDismiss = {
-                showEditProfile = false
+                if (!isSavingProfile) {
+                    showEditProfile = false
+                    saveProfileError = null
+                }
             },
-            onSave = { updatedName, updatedEmail, updatedPhone ->
-                fullName = updatedName
-                email = updatedEmail
-                phoneNumber = updatedPhone
-                showEditProfile = false
+            onSave = { updatedName, _, updatedPhone ->
+                coroutineScope.launch {
+                    isSavingProfile = true
+                    saveProfileError = null
+                    saveProfileSuccess = null
+
+                    try {
+                        val response = ApiClient.updateAdminProfile(
+                            accessToken = accessToken,
+                            fullName = updatedName,
+                            phone = updatedPhone
+                        )
+
+                        if (
+                            response.optString("status")
+                                .equals("OK", ignoreCase = true)
+                        ) {
+                            val profile = response.optJSONObject("profile")
+
+                            if (profile != null) {
+                                fullName = profile.optString(
+                                    "full_name",
+                                    updatedName
+                                ).ifBlank { updatedName }
+
+                                email = profile.optString(
+                                    "email",
+                                    email
+                                ).ifBlank { email }
+
+                                phoneNumber = profile.optString(
+                                    "phone",
+                                    updatedPhone
+                                ).takeUnless {
+                                    it.isBlank() ||
+                                            it.equals("null", ignoreCase = true)
+                                } ?: "Not provided"
+                                    .takeUnless {
+                                    it.isBlank() ||
+                                            it.equals("null", ignoreCase = true)
+                                } ?: "Not provided"
+
+                                showEditProfile = false
+                                saveProfileSuccess =
+                                    "Profile updated successfully."
+                            } else {
+                                saveProfileError =
+                                    "Profile was saved, but response data is missing."
+                            }
+                        } else {
+                            saveProfileError = response.optString(
+                                "message",
+                                "Could not save profile changes."
+                            )
+                        }
+                    } catch (e: Exception) {
+                        saveProfileError = e.message
+                            ?: "Could not save profile. Please try again."
+                    } finally {
+                        isSavingProfile = false
+                    }
+                }
             }
         )
     }
@@ -291,27 +450,23 @@ fun ProfileScreen(
             onDismiss = {
                 showPasswordDialog = false
             },
-            onSave = { _, _, _ ->
-                showPasswordDialog = false
+            onSave = { currentPassword, newPassword, confirmPassword ->
+                ApiClient.changePassword(
+                    accessToken = accessToken,
+                    currentPassword = currentPassword,
+                    newPassword = newPassword,
+                    confirmPassword = confirmPassword
+                )
             }
         )
     }
 
-    if (showAnnouncementDialog) {
-        AnnouncementDialog(
-            onDismiss = { showAnnouncementDialog = false }
-        )
-    }
-
-    if (showSettingsDialog) {
-        SystemSettingsDialog(
-            onDismiss = { showSettingsDialog = false }
-        )
-    }
-
+    // LOGOUT CONFIRMATION
     if (showLogoutDialog) {
         AlertDialog(
-            onDismissRequest = { showLogoutDialog = false },
+            onDismissRequest = {
+                showLogoutDialog = false
+            },
             containerColor = White,
             title = {
                 Text(
@@ -320,7 +475,9 @@ fun ProfileScreen(
                 )
             },
             text = {
-                Text("Are you sure you want to exit the admin account?")
+                Text(
+                    text = "Are you sure you want to exit the admin account?"
+                )
             },
             confirmButton = {
                 TextButton(
@@ -329,14 +486,22 @@ fun ProfileScreen(
                         onLogoutClick()
                     }
                 ) {
-                    Text("Log out", color = Red)
+                    Text(
+                        text = "Log out",
+                        color = Red
+                    )
                 }
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showLogoutDialog = false }
+                    onClick = {
+                        showLogoutDialog = false
+                    }
                 ) {
-                    Text("Cancel", color = EcoGreen)
+                    Text(
+                        text = "Cancel",
+                        color = EcoGreen
+                    )
                 }
             }
         )
@@ -344,7 +509,7 @@ fun ProfileScreen(
 }
 
 // =========================================================
-// EDIT PROFILE POPUP — MATCHES YOUR SCREENSHOT
+// EDIT PROFILE POPUP
 // =========================================================
 
 @Composable
@@ -353,15 +518,30 @@ private fun EditProfileDialog(
     currentEmail: String,
     currentPhone: String,
     profileImageUri: Uri?,
+    isSaving: Boolean,
     onPickImage: () -> Unit,
     onDismiss: () -> Unit,
     onSave: (String, String, String) -> Unit
 ) {
-    var name by remember(currentName) { mutableStateOf(currentName) }
-    var email by remember(currentEmail) { mutableStateOf(currentEmail) }
-    var phone by remember(currentPhone) { mutableStateOf(currentPhone) }
+    var name by remember(currentName) {
+        mutableStateOf(currentName)
+    }
 
-    Dialog(onDismissRequest = onDismiss) {
+    var email by remember(currentEmail) {
+        mutableStateOf(currentEmail)
+    }
+
+    var phone by remember(currentPhone) {
+        mutableStateOf(
+            if (currentPhone == "Not provided") "" else currentPhone
+        )
+    }
+
+    Dialog(
+        onDismissRequest = {
+            if (!isSaving) onDismiss()
+        }
+    ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -392,7 +572,9 @@ private fun EditProfileDialog(
                             .size(54.dp)
                             .clip(CircleShape)
                             .background(Color(0xFF00883E))
-                            .clickable { onPickImage() },
+                            .clickable(enabled = !isSaving) {
+                                onPickImage()
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         if (profileImageUri != null) {
@@ -400,7 +582,7 @@ private fun EditProfileDialog(
                                 model = profileImageUri,
                                 contentDescription = "Profile Picture",
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                contentScale = ContentScale.Crop
                             )
                         } else {
                             Text(
@@ -421,7 +603,9 @@ private fun EditProfileDialog(
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
                         )
+
                         Spacer(Modifier.height(3.dp))
+
                         Text(
                             text = email,
                             color = EcoGreen,
@@ -433,28 +617,37 @@ private fun EditProfileDialog(
                 Spacer(Modifier.height(15.dp))
 
                 ProfileInputLabel("Full Name")
+
                 ProfileRoundedInput(
                     value = name,
                     placeholder = "Enter full name",
-                    onValueChange = { name = it }
+                    onValueChange = {
+                        name = it
+                    }
                 )
 
                 Spacer(Modifier.height(10.dp))
 
                 ProfileInputLabel("Email Address")
+
                 ProfileRoundedInput(
                     value = email,
                     placeholder = "Enter email address",
-                    onValueChange = { email = it }
+                    onValueChange = {
+                        email = it
+                    }
                 )
 
                 Spacer(Modifier.height(10.dp))
 
                 ProfileInputLabel("Phone Number")
+
                 ProfileRoundedInput(
                     value = phone,
                     placeholder = "Enter phone number",
-                    onValueChange = { phone = it }
+                    onValueChange = {
+                        phone = it
+                    }
                 )
 
                 Spacer(Modifier.height(14.dp))
@@ -474,7 +667,9 @@ private fun EditProfileDialog(
                                 EcoBorder,
                                 RoundedCornerShape(22.dp)
                             )
-                            .clickable { onDismiss() },
+                            .clickable(enabled = !isSaving) {
+                                onDismiss()
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -491,12 +686,12 @@ private fun EditProfileDialog(
                             .height(36.dp)
                             .clip(RoundedCornerShape(22.dp))
                             .background(Color(0xFF00883E))
-                            .clickable {
-                                if (
-                                    name.isNotBlank() &&
-                                    email.isNotBlank() &&
-                                    phone.isNotBlank()
-                                ) {
+                            .clickable(enabled = !isSaving) {
+                                if (name.isBlank()) {
+                                    return@clickable
+                                }
+
+                                if (phone.isNotBlank()) {
                                     onSave(
                                         name.trim(),
                                         email.trim(),
@@ -508,20 +703,48 @@ private fun EditProfileDialog(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Save,
-                            contentDescription = null,
-                            tint = White,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
+                        if (isSaving) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                modifier = Modifier.size(13.dp),
+                                color = White,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(6.dp))
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Save,
+                                contentDescription = null,
+                                tint = White,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                        }
+
                         Text(
-                            text = "Save Changes",
+                            text = if (isSaving) "Saving..." else "Save Changes",
                             color = White,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
+                }
+
+                if (name.isBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Full name is required.",
+                        color = Red,
+                        fontSize = 10.sp
+                    )
+                }
+
+                if (phone.isBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Phone number is required.",
+                        color = Red,
+                        fontSize = 10.sp
+                    )
                 }
             }
         }
@@ -540,11 +763,12 @@ private fun ProfileInputLabel(text: String) {
         fontSize = 12.sp,
         fontWeight = FontWeight.Medium
     )
+
     Spacer(Modifier.height(5.dp))
 }
 
 // =========================================================
-// ROUNDED PROFILE INPUT — LIKE THE SCREENSHOT
+// ROUNDED PROFILE INPUT
 // =========================================================
 
 @Composable
@@ -585,6 +809,7 @@ private fun ProfileRoundedInput(
                             fontSize = 12.sp
                         )
                     }
+
                     innerTextField()
                 }
             }
@@ -594,13 +819,16 @@ private fun ProfileRoundedInput(
 
 // =========================================================
 // CHANGE PASSWORD POPUP
-// CURRENT, NEW, CONFIRM — WITH SHOW/HIDE
 // =========================================================
 
 @Composable
 private fun ChangePasswordDialog(
     onDismiss: () -> Unit,
-    onSave: (String, String, String) -> Unit
+    onSave: suspend (
+        String,
+        String,
+        String
+    ) -> org.json.JSONObject
 ) {
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
@@ -611,8 +839,16 @@ private fun ChangePasswordDialog(
     var showConfirmPassword by remember { mutableStateOf(false) }
 
     var errorMessage by remember { mutableStateOf("") }
+    var successMessage by remember { mutableStateOf("") }
+    var isSaving by remember { mutableStateOf(false) }
 
-    Dialog(onDismissRequest = onDismiss) {
+    val coroutineScope = rememberCoroutineScope()
+
+    Dialog(
+        onDismissRequest = {
+            if (!isSaving) onDismiss()
+        }
+    ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -637,7 +873,10 @@ private fun ChangePasswordDialog(
                     )
 
                     IconButton(
-                        onClick = onDismiss,
+                        onClick = {
+                            if (!isSaving) onDismiss()
+                        },
+                        enabled = !isSaving,
                         modifier = Modifier.size(30.dp)
                     ) {
                         Icon(
@@ -654,7 +893,10 @@ private fun ChangePasswordDialog(
                     label = "Current Password",
                     value = currentPassword,
                     visible = showCurrentPassword,
-                    onValueChange = { currentPassword = it },
+                    onValueChange = {
+                        currentPassword = it
+                        errorMessage = ""
+                    },
                     onToggleVisibility = {
                         showCurrentPassword = !showCurrentPassword
                     }
@@ -666,7 +908,10 @@ private fun ChangePasswordDialog(
                     label = "New Password",
                     value = newPassword,
                     visible = showNewPassword,
-                    onValueChange = { newPassword = it },
+                    onValueChange = {
+                        newPassword = it
+                        errorMessage = ""
+                    },
                     onToggleVisibility = {
                         showNewPassword = !showNewPassword
                     }
@@ -678,7 +923,10 @@ private fun ChangePasswordDialog(
                     label = "Confirm Password",
                     value = confirmPassword,
                     visible = showConfirmPassword,
-                    onValueChange = { confirmPassword = it },
+                    onValueChange = {
+                        confirmPassword = it
+                        errorMessage = ""
+                    },
                     onToggleVisibility = {
                         showConfirmPassword = !showConfirmPassword
                     }
@@ -693,6 +941,15 @@ private fun ChangePasswordDialog(
                     )
                 }
 
+                if (successMessage.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = successMessage,
+                        color = EcoGreen,
+                        fontSize = 12.sp
+                    )
+                }
+
                 Spacer(Modifier.height(18.dp))
 
                 Row(
@@ -701,6 +958,7 @@ private fun ChangePasswordDialog(
                 ) {
                     Button(
                         onClick = onDismiss,
+                        enabled = !isSaving,
                         modifier = Modifier
                             .weight(1f)
                             .height(38.dp),
@@ -709,40 +967,90 @@ private fun ChangePasswordDialog(
                             contentColor = EcoGreen
                         ),
                         shape = RoundedCornerShape(22.dp),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            EcoBorder
-                        )
+                        border = BorderStroke(1.dp, EcoBorder)
                     ) {
-                        Text("Cancel", fontSize = 12.sp)
+                        Text(
+                            text = "Cancel",
+                            fontSize = 12.sp
+                        )
                     }
 
                     Button(
                         onClick = {
+                            if (successMessage.isNotBlank()) {
+                                onDismiss()
+                                return@Button
+                            }
+
                             when {
                                 currentPassword.isBlank() ||
                                         newPassword.isBlank() ||
                                         confirmPassword.isBlank() -> {
-                                    errorMessage = "Please complete all password fields."
+                                    errorMessage =
+                                        "Please complete all password fields."
+                                }
+
+                                newPassword.length < 8 -> {
+                                    errorMessage =
+                                        "New password must be at least 8 characters."
                                 }
 
                                 newPassword != confirmPassword -> {
-                                    errorMessage = "New password and confirmation do not match."
+                                    errorMessage =
+                                        "New password and confirmation do not match."
                                 }
 
                                 currentPassword == newPassword -> {
-                                    errorMessage = "Your new password must be different."
+                                    errorMessage =
+                                        "Your new password must be different."
                                 }
 
                                 else -> {
-                                    onSave(
-                                        currentPassword,
-                                        newPassword,
-                                        confirmPassword
-                                    )
+                                    coroutineScope.launch {
+                                        isSaving = true
+                                        errorMessage = ""
+
+                                        try {
+                                            val response = onSave(
+                                                currentPassword,
+                                                newPassword,
+                                                confirmPassword
+                                            )
+
+                                            if (
+                                                response.optString("status")
+                                                    .equals(
+                                                        "ERROR",
+                                                        ignoreCase = true
+                                                    )
+                                            ) {
+                                                errorMessage =
+                                                    response.optString(
+                                                        "message",
+                                                        "Could not change password."
+                                                    )
+                                            } else {
+                                                successMessage =
+                                                    response.optString(
+                                                        "message",
+                                                        "Password changed successfully."
+                                                    )
+
+                                                currentPassword = ""
+                                                newPassword = ""
+                                                confirmPassword = ""
+                                            }
+                                        } catch (e: Exception) {
+                                            errorMessage = e.message
+                                                ?: "Could not change password. Please try again."
+                                        } finally {
+                                            isSaving = false
+                                        }
+                                    }
                                 }
                             }
                         },
+                        enabled = !isSaving,
                         modifier = Modifier
                             .weight(1f)
                             .height(38.dp),
@@ -752,7 +1060,11 @@ private fun ChangePasswordDialog(
                         shape = RoundedCornerShape(22.dp)
                     ) {
                         Text(
-                            text = "Save Changes",
+                            text = when {
+                                isSaving -> "Saving..."
+                                successMessage.isNotBlank() -> "Done"
+                                else -> "Save Changes"
+                            },
                             fontSize = 12.sp
                         )
                     }
@@ -789,7 +1101,9 @@ private fun PasswordInput(
                 PasswordVisualTransformation()
             },
             trailingIcon = {
-                IconButton(onClick = onToggleVisibility) {
+                IconButton(
+                    onClick = onToggleVisibility
+                ) {
                     Icon(
                         imageVector = if (visible) {
                             Icons.Default.VisibilityOff
@@ -849,7 +1163,10 @@ private fun ProfileSidebar(
             modifier = Modifier
                 .fillMaxWidth()
                 .border(1.dp, Color(0xFF4A8A50))
-                .padding(horizontal = 18.dp, vertical = 12.dp)
+                .padding(
+                    horizontal = 18.dp,
+                    vertical = 12.dp
+                )
         ) {
             Text(
                 text = "ADMINISTRATOR",
@@ -876,38 +1193,44 @@ private fun ProfileSidebar(
         Spacer(Modifier.height(20.dp))
 
         ProfileSidebarItem(
-            Icons.Default.GridView,
-            "Dashboard",
+            icon = Icons.Default.GridView,
+            title = "Dashboard",
             onClick = onDashboardClick
         )
+
         ProfileSidebarItem(
-            Icons.Default.Description,
-            "Waste Report",
+            icon = Icons.Default.Description,
+            title = "Waste Report",
             onClick = onWasteReportClick
         )
+
         ProfileSidebarItem(
-            Icons.Default.LocalShipping,
-            "Collectors",
+            icon = Icons.Default.LocalShipping,
+            title = "Collectors",
             onClick = onCollectorsClick
         )
+
         ProfileSidebarItem(
-            Icons.Default.Groups,
-            "Residents",
+            icon = Icons.Default.Groups,
+            title = "Residents",
             onClick = onResidentsClick
         )
+
         ProfileSidebarItem(
-            Icons.Default.CalendarMonth,
-            "Schedules",
+            icon = Icons.Default.CalendarMonth,
+            title = "Schedules",
             onClick = onScheduleClick
         )
+
         ProfileSidebarItem(
-            Icons.Default.BarChart,
-            "Analytics",
+            icon = Icons.Default.BarChart,
+            title = "Analytics",
             onClick = onAnalyticsClick
         )
+
         ProfileSidebarItem(
-            Icons.Default.MenuBook,
-            "Waste Guide",
+            icon = Icons.Default.MenuBook,
+            title = "Waste Guide",
             onClick = onWasteGuideClick
         )
     }
@@ -926,10 +1249,15 @@ private fun ProfileSidebarItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 15.dp, vertical = 4.dp)
+            .padding(
+                horizontal = 15.dp,
+                vertical = 4.dp
+            )
             .height(42.dp)
             .clip(RoundedCornerShape(22.dp))
-            .clickable { onClick() }
+            .clickable {
+                onClick()
+            }
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -966,13 +1294,6 @@ private fun ProfileTopBar(
             .padding(horizontal = 25.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = Icons.Default.Menu,
-            contentDescription = "Menu",
-            tint = EcoDarkGreen,
-            modifier = Modifier.size(23.dp)
-        )
-
         Spacer(Modifier.width(15.dp))
 
         Text(
@@ -984,7 +1305,9 @@ private fun ProfileTopBar(
 
         Spacer(Modifier.weight(1f))
 
-        IconButton(onClick = onNotificationClick) {
+        IconButton(
+            onClick = onNotificationClick
+        ) {
             Icon(
                 imageVector = Icons.Default.Notifications,
                 contentDescription = "Notifications",
@@ -1009,9 +1332,18 @@ private fun ProfileOptionButton(
         modifier = Modifier
             .fillMaxWidth()
             .height(55.dp)
-            .background(White, RoundedCornerShape(14.dp))
-            .border(1.dp, EcoBorder, RoundedCornerShape(14.dp))
-            .clickable { onClick() }
+            .background(
+                White,
+                RoundedCornerShape(14.dp)
+            )
+            .border(
+                1.dp,
+                EcoBorder,
+                RoundedCornerShape(14.dp)
+            )
+            .clickable {
+                onClick()
+            }
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1053,8 +1385,14 @@ private fun ProfileLogoutButton(
             .fillMaxWidth()
             .height(55.dp)
             .clip(RoundedCornerShape(14.dp))
-            .border(1.dp, Color(0xFFD6AAA8), RoundedCornerShape(14.dp))
-            .clickable { onClick() },
+            .border(
+                1.dp,
+                Color(0xFFD6AAA8),
+                RoundedCornerShape(14.dp)
+            )
+            .clickable {
+                onClick()
+            },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
@@ -1076,70 +1414,6 @@ private fun ProfileLogoutButton(
 }
 
 // =========================================================
-// ANNOUNCEMENT DIALOG
-// =========================================================
-
-@Composable
-private fun AnnouncementDialog(
-    onDismiss: () -> Unit
-) {
-    var announcement by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = White,
-        title = {
-            Text("Send Announcement", color = EcoTextGreen)
-        },
-        text = {
-            OutlinedTextField(
-                value = announcement,
-                onValueChange = { announcement = it },
-                label = { Text("Announcement") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Send", color = EcoGreen)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = EcoGreen)
-            }
-        }
-    )
-}
-
-// =========================================================
-// SYSTEM SETTINGS DIALOG
-// =========================================================
-
-@Composable
-private fun SystemSettingsDialog(
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = White,
-        title = {
-            Text("System Settings", color = EcoTextGreen)
-        },
-        text = {
-            Text(
-                "System settings will be connected to the backend later."
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("OK", color = EcoGreen)
-            }
-        }
-    )
-}
-
-// =========================================================
 // PROFILE INITIALS
 // =========================================================
 
@@ -1148,6 +1422,8 @@ private fun initials(name: String): String {
         .split(Regex("\\s+"))
         .filter { it.isNotBlank() }
         .take(2)
-        .joinToString("") { it.first().uppercase() }
+        .joinToString("") {
+            it.first().uppercase()
+        }
         .ifBlank { "SA" }
 }

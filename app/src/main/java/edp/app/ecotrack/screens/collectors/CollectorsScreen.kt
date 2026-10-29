@@ -1,84 +1,65 @@
+
 package edp.app.ecotrack.screens.collectors
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.LocalShipping
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.ui.draw.shadow
-import androidx.compose.foundation.BorderStroke
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import androidx.compose.ui.graphics.Color
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.graphics.Bitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import java.io.File
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-
-// ---------------------------------------------------------
-// COLORS - SAME AS DASHBOARD
-// ---------------------------------------------------------
+import edp.app.ecotrack.network.ApiClient
+import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private val EcoDarkGreen = Color(0xFF216B2A)
 private val EcoGreen = Color(0xFF2E7D32)
@@ -89,14 +70,8 @@ private val TextGreen = Color(0xFF286B32)
 private val LightBorder = Color(0xFFE1E8E2)
 private val ActiveGreen = Color(0xFFCFF7C7)
 private val ActiveText = Color(0xFF4C9143)
-private val InactiveGreen = Color(0xFF8BAF91)
 private val Red = Color(0xFFD6323C)
-private val Gray = Color(0xFFE1E1E1)
 private val White = Color.White
-
-// ---------------------------------------------------------
-// DATA MODEL
-// ---------------------------------------------------------
 
 data class Collector(
     val collectorId: String,
@@ -105,15 +80,9 @@ data class Collector(
     val phoneNumber: String,
     val tasks: Int,
     val completed: Int,
-    val status: String
+    val status: String,
+    val profileImage: String? = null
 )
-
-// ---------------------------------------------------------
-// TASK HISTORY DATA
-// Each collector has different assigned reports.
-// Frontend sample data only.
-// ---------------------------------------------------------
-
 private data class TaskHistoryReport(
     val reportId: String,
     val status: String,
@@ -129,142 +98,81 @@ private data class CollectorTaskHistory(
     val reports: List<TaskHistoryReport>
 )
 
-private fun getCollectorTaskHistory(
-    collectorId: String
+/* Converts the backend JSON response into Android data. */
+private fun parseCollectorTaskHistory(
+    response: JSONObject
 ): CollectorTaskHistory {
-    return when (collectorId) {
+    val summary = response.optJSONObject("summary")
+    val records = response.optJSONArray("reports") ?: JSONArray()
 
-        "COL-001" -> CollectorTaskHistory(
-            totalTasks = 12,
-            completedTasks = 10,
-            inProgressTasks = 2,
-            reports = listOf(
-                TaskHistoryReport(
-                    "#1021",
-                    "Resolved",
-                    "Improper Waste Disposal",
-                    "Quezon Blvd. · Brgy. Area A",
-                    "Sep 13, 2026"
-                ),
-                TaskHistoryReport(
-                    "#1019",
-                    "Resolved",
-                    "Overflowing Garbage",
-                    "Magsaysay St. · Brgy. Area B",
-                    "Sep 12, 2026"
-                ),
-                TaskHistoryReport(
-                    "#1017",
-                    "In Progress",
-                    "Uncollected Garbage",
-                    "Rizal Ave. · Brgy. Area A",
-                    "Sep 10, 2026"
-                )
-            )
-        )
+    val reports = (0 until records.length()).mapNotNull { index ->
+        val item = records.optJSONObject(index) ?: return@mapNotNull null
 
-        "COL-002" -> CollectorTaskHistory(
-            totalTasks = 8,
-            completedTasks = 6,
-            inProgressTasks = 2,
-            reports = listOf(
-                TaskHistoryReport(
-                    "#1025",
-                    "In Progress",
-                    "Missed Waste Collection",
-                    " Mabini St. · Brgy. Area D",
-                    "Sep 15, 2026"
-                ),
-                TaskHistoryReport(
-                    "#1020",
-                    "Resolved",
-                    "Uncollected Household Waste",
-                    "Bonifacio St. · Brgy. Area A",
-                    "Sep 12, 2026"
-                ),
-                TaskHistoryReport(
-                    "#1015",
-                    "Resolved",
-                    "Overflowing Garbage Bin",
-                    "Del Pilar St. · Brgy. Area D",
-                    "Sep 09, 2026"
-                )
-            )
-        )
+        val rawId = item.optString("report_id", "")
+        val rawDate = item.optString("date", "")
+            .takeUnless { it.isBlank() || it == "null" }
 
-        "COL-003" -> CollectorTaskHistory(
-            totalTasks = 5,
-            completedTasks = 3,
-            inProgressTasks = 2,
-            reports = listOf(
-                TaskHistoryReport(
-                    "#1026",
-                    "In Progress",
-                    "Uncollected Biodegradable Waste",
-                    "Andres St. · Brgy. Area C",
-                    "Sep 16, 2026"
-                ),
-                TaskHistoryReport(
-                    "#1018",
-                    "Resolved",
-                    "Improper Garbage Disposal",
-                    "Rizal St. · Brgy. Area C",
-                    "Sep 11, 2026"
-                ),
-                TaskHistoryReport(
-                    "#1012",
-                    "Resolved",
-                    "Overflowing Community Bin",
-                    "Del Rosario St. · Brgy. Area C",
-                    "Sep 07, 2026"
-                )
-            )
-        )
+        val displayDate = try {
+            if (rawDate == null) {
+                "Date unavailable"
+            } else {
+                val datePart = rawDate.take(10)
+                val parsed = SimpleDateFormat(
+                    "yyyy-MM-dd",
+                    Locale.US
+                ).parse(datePart)
 
-        "COL-004" -> CollectorTaskHistory(
-            totalTasks = 3,
-            completedTasks = 3,
-            inProgressTasks = 0,
-            reports = listOf(
-                TaskHistoryReport(
-                    "#1016",
-                    "Resolved",
-                    "Scattered Garbage",
-                    "Osmena St. · Brgy. Area B",
-                    "Sep 10, 2026"
-                ),
-                TaskHistoryReport(
-                    "#1009",
-                    "Resolved",
-                    "Uncollected Residual Waste",
-                    "Burgos St. · Brgy. Area C",
-                    "Sep 05, 2026"
-                ),
-                TaskHistoryReport(
-                    "#1004",
-                    "Resolved",
-                    "Overflowing Waste Container",
-                    "Quezon St. · Brgy. Area B",
-                    "Sep 02, 2026"
-                )
-            )
-        )
+                if (parsed != null) {
+                    SimpleDateFormat(
+                        "MMM dd, yyyy",
+                        Locale.getDefault()
+                    ).format(parsed)
+                } else {
+                    datePart
+                }
+            }
+        } catch (_: Exception) {
+            rawDate?.take(10) ?: "Date unavailable"
+        }
 
-        else -> CollectorTaskHistory(
-            totalTasks = 0,
-            completedTasks = 0,
-            inProgressTasks = 0,
-            reports = emptyList()
+        TaskHistoryReport(
+            reportId = if (rawId.isBlank() || rawId == "null") {
+                "Report unavailable"
+            } else {
+                "#$rawId"
+            },
+            status = item.optString("status", "Assigned"),
+            issue = item.optString("issue", "Waste Report"),
+            location = item.optString(
+                "location",
+                "Location unavailable"
+            ),
+            date = displayDate
         )
     }
+
+    return CollectorTaskHistory(
+        totalTasks = summary?.optInt("total_tasks", reports.size)
+            ?: reports.size,
+        completedTasks = summary?.optInt("completed_tasks", 0) ?: 0,
+        inProgressTasks = summary?.optInt("in_progress_tasks", 0) ?: 0,
+        reports = reports
+    )
 }
 
-// ---------------------------------------------------------
-// MAIN COLLECTORS SCREEN
-// ---------------------------------------------------------
+private fun generateNextCollectorId(
+    collectors: List<Collector>
+): String {
+    val highest = collectors.mapNotNull {
+        it.collectorId.removePrefix("COL-").toIntOrNull()
+    }.maxOrNull() ?: 0
+
+    return "COL-${(highest + 1).toString().padStart(3, '0')}"
+}
 
 @Composable
 fun CollectorsScreen(
+    accessToken: String,
     onNotificationClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onDashboardClick: () -> Unit = {},
@@ -275,344 +183,272 @@ fun CollectorsScreen(
     onAnalyticsClick: () -> Unit = {},
     onWasteGuideClick: () -> Unit = {}
 ) {
+    val collectors = remember { mutableStateListOf<Collector>() }
+    val scope = rememberCoroutineScope()
 
-    val collectors = remember {
-        mutableStateListOf(
+    var isLoadingCollectors by remember { mutableStateOf(true) }
+    var collectorsError by remember { mutableStateOf("") }
+    var isAddingCollector by remember { mutableStateOf(false) }
+    var addCollectorError by remember { mutableStateOf("") }
+    var showAddDialog by remember { mutableStateOf(false) }
+    var editingCollector by remember { mutableStateOf<Collector?>(null) }
+    var deletingCollector by remember { mutableStateOf<Collector?>(null) }
+    var viewingTaskHistory by remember { mutableStateOf<Collector?>(null) }
+
+    /*
+     * Read collectors and their task summaries from the backend.
+     * The backend must return the real user_id for each collector.
+     */
+    suspend fun reloadCollectors() {
+        val response = ApiClient.getCollectors(accessToken)
+        val records = response.optJSONArray("collectors") ?: JSONArray()
+
+        val loaded = (0 until records.length()).mapNotNull { index ->
+            val item = records.optJSONObject(index) ?: return@mapNotNull null
+            val userId = item.optInt("user_id", 0)
+
+            if (userId <= 0) return@mapNotNull null
+
+            val barangay = item.optJSONObject("barangays")
+            val barangayName = barangay?.optString("barangay_name")
+                ?.takeIf { !it.isNullOrBlank() && it != "null" }
+                ?: "Not assigned"
+
+            val phone = item.optString("contact_number")
+                .takeIf { it.isNotBlank() && it != "null" }
+                ?: "Not provided"
+
+            // Do not use sample task counts.
+            // If the history request fails, the table temporarily shows zero.
+            val taskHistory = try {
+                parseCollectorTaskHistory(
+                    ApiClient.getCollectorTaskHistory(
+                        accessToken = accessToken,
+                        collectorId = userId.toString()
+                    )
+                )
+            } catch (_: Exception) {
+                null
+            }
+
             Collector(
-                "COL-001",
-                "Lito Bautista",
-                "Brgy. Area A & B",
-                "0912-345-6789",
-                12,
-                3,
-                "Active"
-            ),
-            Collector(
-                "COL-002",
-                "Carlos Mendoza",
-                "Brgy. Area A & D",
-                "0912-345-6789",
-                8,
-                3,
-                "Active"
-            ),
-            Collector(
-                "COL-003",
-                "Ramon Dela Cruz",
-                "Brgy. Area C",
-                "0912-345-6789",
-                5,
-                3,
-                "Active"
-            ),
-            Collector(
-                "COL-004",
-                "Felix Ramos",
-                "Brgy. Area B & C",
-                "0912-345-6789",
-                3,
-                3,
-                "Inactive"
+                collectorId = "COL-${userId.toString().padStart(3, '0')}",
+                fullName = item.optString("full_name", "Unknown"),
+                assignedArea = barangayName,
+                phoneNumber = phone,
+                tasks = taskHistory?.totalTasks ?: 0,
+                completed = taskHistory?.completedTasks ?: 0,
+                status = if (item.optBoolean("is_active", false)) {
+                    "Active"
+                } else {
+                    "Inactive"
+                },
+                profileImage = item.optString("profile_image", "")
+                    .takeIf { it.isNotBlank() && it != "null" }
             )
-        )
+        }
+
+        collectors.clear()
+        collectors.addAll(loaded)
     }
 
-    var showAddDialog by remember {
-        mutableStateOf(false)
-    }
+    LaunchedEffect(accessToken) {
+        if (accessToken.isBlank()) {
+            collectorsError = "Please log in again to load collectors."
+            isLoadingCollectors = false
+            return@LaunchedEffect
+        }
 
-    var editingCollector by remember {
-        mutableStateOf<Collector?>(null)
-    }
+        isLoadingCollectors = true
+        collectorsError = ""
 
-    var deletingCollector by remember {
-        mutableStateOf<Collector?>(null)
-    }
-
-    // ADDED: selected collector for task history
-    var viewingTaskHistory by remember {
-        mutableStateOf<Collector?>(null)
+        try {
+            reloadCollectors()
+        } catch (e: Exception) {
+            collectorsError = e.message ?: "Unable to load collectors."
+        } finally {
+            isLoadingCollectors = false
+        }
     }
 
     Row(
-        modifier = Modifier
+        Modifier
             .fillMaxSize()
             .background(EcoLightGreen)
     ) {
-
-        // =================================================
         // SIDEBAR
-        // SAME SIZE/DESIGN AS DASHBOARD
-        // =================================================
-
         Column(
-            modifier = Modifier
+            Modifier
                 .width(250.dp)
                 .fillMaxHeight()
                 .background(EcoDarkGreen)
                 .padding(bottom = 20.dp)
         ) {
-
             Row(
-                modifier = Modifier
+                Modifier
                     .fillMaxWidth()
                     .height(62.dp)
                     .padding(horizontal = 18.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "♧EcoTrack",
-                    color = White,
-                    fontSize = 19.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                Text("♧EcoTrack", color = White, fontSize = 19.sp)
             }
 
             Column(
-                modifier = Modifier
+                Modifier
                     .fillMaxWidth()
-                    .border(
-                        width = 1.dp,
-                        color = Color(0xFF4A8A50)
-                    )
-                    .padding(
-                        horizontal = 18.dp,
-                        vertical = 12.dp
-                    )
+                    .border(1.dp, Color(0xFF4A8A50))
+                    .padding(horizontal = 18.dp, vertical = 12.dp)
             ) {
                 Text(
-                    text = "ADMINISTRATOR",
+                    "ADMINISTRATOR",
                     color = Color(0xFF9FD6A5),
                     fontSize = 11.sp
                 )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
+                Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "System Admin",
+                    "System Admin",
                     color = White,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
-
                 Text(
-                    text = "admin@ecotrack.gov.ph",
+                    "admin@ecotrack.gov.ph",
                     color = Color(0xFFB9DDBD),
                     fontSize = 10.sp
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            SidebarItem(
-                icon = Icons.Default.GridView,
-                title = "Dashboard",
-                selected = false,
-                onClick = onDashboardClick
-            )
-
-            SidebarItem(
-                icon = Icons.Default.Description,
-                title = "Waste Report",
-                selected = false,
-                onClick = onWasteReportClick
-            )
-
-            SidebarItem(
-                icon = Icons.Default.LocalShipping,
-                title = "Collectors",
-                selected = true,
-                onClick = onCollectorsClick
-            )
-
-            SidebarItem(
-                icon = Icons.Default.Groups,
-                title = "Residents",
-                selected = false,
-                onClick = onResidentsClick
-            )
-
-            SidebarItem(
-                icon = Icons.Default.CalendarMonth,
-                title = "Schedules",
-                selected = false,
-                onClick = onScheduleClick
-            )
-
-            SidebarItem(
-                icon = Icons.Default.BarChart,
-                title = "Analytics",
-                selected = false,
-                onClick = onAnalyticsClick
-            )
-
-            SidebarItem(
-                icon = Icons.Default.BarChart,
-                title = "Waste Guide",
-                selected = false,
-                onClick = onWasteGuideClick
-            )
+            Spacer(Modifier.height(20.dp))
+            SidebarItem(Icons.Default.GridView, "Dashboard", onClick = onDashboardClick)
+            SidebarItem(Icons.Default.Description, "Waste Report", onClick = onWasteReportClick)
+            SidebarItem(Icons.Default.LocalShipping, "Collectors", selected = true, onClick = onCollectorsClick)
+            SidebarItem(Icons.Default.Groups, "Residents", onClick = onResidentsClick)
+            SidebarItem(Icons.Default.CalendarMonth, "Schedules", onClick = onScheduleClick)
+            SidebarItem(Icons.Default.BarChart, "Analytics", onClick = onAnalyticsClick)
+            SidebarItem(Icons.Default.BarChart, "Waste Guide", onClick = onWasteGuideClick)
         }
 
-        // =================================================
         // MAIN CONTENT
-        // =================================================
-
         Column(
-            modifier = Modifier
+            Modifier
                 .fillMaxHeight()
                 .weight(1f)
         ) {
-
-            // TOP BAR
-
             Row(
-                modifier = Modifier
+                Modifier
                     .fillMaxWidth()
                     .height(62.dp)
                     .background(EcoTopBar)
                     .padding(horizontal = 25.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Spacer(Modifier.width(15.dp))
+                Text("Collectors", color = EcoDarkGreen, fontSize = 18.sp)
+                Spacer(Modifier.weight(1f))
 
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = "Menu",
-                    tint = EcoDarkGreen,
-                    modifier = Modifier.size(23.dp)
-                )
-
-                Spacer(modifier = Modifier.width(15.dp))
-
-                Text(
-                    text = "Collectors",
-                    color = EcoDarkGreen,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium
-                )
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                IconButton(
-                    onClick = onNotificationClick
-                ) {
+                IconButton(onClick = onNotificationClick) {
                     Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = "Notifications",
-                        tint = Color.Black,
-                        modifier = Modifier.size(23.dp)
+                        Icons.Default.Notifications,
+                        "Notifications",
+                        tint = Color.Black
                     )
                 }
 
-                IconButton(
-                    onClick = onProfileClick
-                ) {
+                IconButton(onClick = onProfileClick) {
                     Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = "Profile",
+                        Icons.Default.AccountCircle,
+                        "Profile",
                         tint = EcoDarkGreen,
                         modifier = Modifier.size(31.dp)
                     )
                 }
             }
 
-            // PAGE CONTENT
-
             Column(
-                modifier = Modifier
+                Modifier
                     .fillMaxSize()
-                    .padding(
-                        horizontal = 30.dp,
-                        vertical = 18.dp
-                    )
+                    .padding(horizontal = 30.dp, vertical = 18.dp)
             ) {
-
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     Text(
-                        text = "Garbage Collector Management",
+                        "Garbage Collector Management",
                         color = TextGreen,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Medium
                     )
 
-                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(Modifier.weight(1f))
 
                     Button(
                         onClick = {
+                            addCollectorError = ""
                             showAddDialog = true
                         },
-                        modifier = Modifier
-                            .height(31.dp)
-                            .width(113.dp),
+                        modifier = Modifier.height(35.dp),
                         shape = RoundedCornerShape(15.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = EcoGreen
                         ),
-                        contentPadding = PaddingValues(
-                            horizontal = 8.dp
-                        )
+                        contentPadding = PaddingValues(horizontal = 10.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add",
+                            Icons.Default.Add,
+                            "Add",
                             modifier = Modifier.size(15.dp)
                         )
-
-                        Spacer(modifier = Modifier.width(4.dp))
-
-                        Text(
-                            text = "Add Collector",
-                            fontSize = 10.sp
-                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text("Add Collector", fontSize = 10.sp)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(31.dp))
+                Spacer(Modifier.height(24.dp))
+
+                if (isLoadingCollectors) {
+                    Text(
+                        "Loading collectors...",
+                        color = TextGreen,
+                        fontSize = 12.sp
+                    )
+                }
+
+                if (collectorsError.isNotBlank()) {
+                    Text(
+                        collectorsError,
+                        color = Red,
+                        fontSize = 12.sp
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
 
                 Surface(
-                    modifier = Modifier
+                    Modifier
                         .fillMaxWidth()
-                        .shadow(
-                            elevation = 6.dp,
-                            shape = RoundedCornerShape(10.dp),
-                            clip = false
-                        ),
+                        .shadow(6.dp, RoundedCornerShape(10.dp)),
                     shape = RoundedCornerShape(10.dp),
-                    color = Color.White
+                    color = White
                 ) {
-
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-
+                    Column {
                         CollectorTableHeader()
 
                         LazyColumn(
-                            modifier = Modifier
+                            Modifier
                                 .fillMaxWidth()
-                                .height(190.dp)
+                                .height(300.dp)
                         ) {
-
-                            items(
-                                items = collectors,
-                                key = { it.collectorId }
-                            ) { collector ->
-
+                            items(collectors, key = { it.collectorId }) { collector ->
                                 CollectorRow(
                                     collector = collector,
-
                                     onNameClick = {
                                         viewingTaskHistory = collector
                                     },
-
                                     onEdit = {
                                         editingCollector = collector
                                     },
-
                                     onDelete = {
                                         deletingCollector = collector
                                     }
@@ -625,103 +461,159 @@ fun CollectorsScreen(
         }
     }
 
-    // =================================================
-    // ADD COLLECTOR DIALOG
-    // =================================================
-
+    // ADD COLLECTOR
     if (showAddDialog) {
         AddCollectorDialog(
             nextCollectorId = generateNextCollectorId(collectors),
-
+            isSaving = isAddingCollector,
+            errorMessage = addCollectorError,
             onDismiss = {
-                showAddDialog = false
+                if (!isAddingCollector) {
+                    showAddDialog = false
+                    addCollectorError = ""
+                }
             },
+            onAdd = { fullName, email, password, phone, assignedArea, status ->
+                scope.launch {
+                    isAddingCollector = true
+                    addCollectorError = ""
 
-            onAdd = { fullName, phone, assignedArea, status ->
+                    try {
+                        if (accessToken.isBlank()) {
+                            throw IllegalStateException(
+                                "Please log in again before adding a collector."
+                            )
+                        }
 
-                collectors.add(
-                    Collector(
-                        collectorId = generateNextCollectorId(collectors),
-                        fullName = fullName,
-                        assignedArea = assignedArea,
-                        phoneNumber = phone,
-                        tasks = 0,
-                        completed = 0,
-                        status = status
-                    )
-                )
+                        val barangayId = when {
+                            assignedArea.equals(
+                                "Barangay Bulua",
+                                ignoreCase = true
+                            ) -> 1
 
-                showAddDialog = false
+                            else -> throw IllegalArgumentException(
+                                "Only Barangay Bulua (ID 1) is currently configured. " +
+                                        "Please configure other barangays in Supabase first."
+                            )
+                        }
+
+                        ApiClient.addCollector(
+                            accessToken = accessToken,
+                            name = fullName,
+                            email = email,
+                            password = password,
+                            phone = phone,
+                            barangayId = barangayId
+                        )
+
+                        reloadCollectors()
+                        showAddDialog = false
+                        addCollectorError = ""
+
+                        collectorsError = if (status == "Inactive") {
+                            "Collector created. The backend currently creates accounts as Active."
+                        } else {
+                            ""
+                        }
+                    } catch (e: Exception) {
+                        addCollectorError =
+                            e.message ?: "Unable to add collector."
+                    } finally {
+                        isAddingCollector = false
+                    }
+                }
             }
         )
     }
 
-    // =================================================
-    // EDIT COLLECTOR DIALOG
-    // =================================================
-
+    // EDIT COLLECTOR
     editingCollector?.let { collector ->
         EditCollectorDialog(
             collector = collector,
-
-            onDismiss = {
-                editingCollector = null
-            },
-
-            onSave = { updatedCollector ->
-
+            onDismiss = { editingCollector = null },
+            onSave = { updated ->
                 val index = collectors.indexOfFirst {
-                    it.collectorId == updatedCollector.collectorId
+                    it.collectorId == updated.collectorId
                 }
-
-                if (index != -1) {
-                    collectors[index] = updatedCollector
-                }
-
+                if (index >= 0) collectors[index] = updated
                 editingCollector = null
             }
         )
     }
 
-    // =================================================
-    // DELETE CONFIRMATION
-    // =================================================
-
+    // DELETE COLLECTOR
     deletingCollector?.let { collector ->
         DeleteCollectorDialog(
             collector = collector,
-
-            onDismiss = {
-                deletingCollector = null
-            },
-
+            onDismiss = { deletingCollector = null },
             onConfirm = {
                 collectors.removeAll {
                     it.collectorId == collector.collectorId
                 }
-
                 deletingCollector = null
             }
         )
     }
 
-    // =================================================
-    // TASK HISTORY DIALOG - ADDED
-    // =================================================
-
+    // REAL TASK HISTORY
     viewingTaskHistory?.let { collector ->
-        CollectorTaskHistoryDialog(
+        CollectorTaskHistoryLoader(
             collector = collector,
-            onDismiss = {
-                viewingTaskHistory = null
-            }
+            accessToken = accessToken,
+            onDismiss = { viewingTaskHistory = null }
         )
     }
 }
 
-// ============================================================
-// SIDEBAR ITEM
-// ============================================================
+@Composable
+private fun CollectorTaskHistoryLoader(
+    collector: Collector,
+    accessToken: String,
+    onDismiss: () -> Unit
+) {
+    var history by remember(collector.collectorId) {
+        mutableStateOf<CollectorTaskHistory?>(null)
+    }
+    var loading by remember(collector.collectorId) {
+        mutableStateOf(true)
+    }
+    var error by remember(collector.collectorId) {
+        mutableStateOf("")
+    }
+
+    LaunchedEffect(collector.collectorId, accessToken) {
+        history = null
+        error = ""
+        loading = true
+
+        try {
+            val userId = collector.collectorId
+                .removePrefix("COL-")
+                .toIntOrNull()
+                ?: throw IllegalArgumentException("Invalid collector ID.")
+
+            history = parseCollectorTaskHistory(
+                ApiClient.getCollectorTaskHistory(
+                    accessToken = accessToken,
+                    collectorId = userId.toString()
+                )
+            )
+        } catch (e: Exception) {
+            error = e.message ?: "Unable to load task history."
+        } finally {
+            loading = false
+        }
+    }
+
+    CollectorTaskHistoryDialog(
+        collector = collector,
+        history = history,
+        isLoading = loading,
+        errorMessage = error,
+        accessToken = accessToken,
+        onDismiss = onDismiss
+    )
+}
 
 @Composable
 private fun SidebarItem(
@@ -731,54 +623,31 @@ private fun SidebarItem(
     onClick: () -> Unit = {}
 ) {
     Row(
-        modifier = Modifier
+        Modifier
             .fillMaxWidth()
-            .padding(
-                horizontal = 15.dp,
-                vertical = 4.dp
-            )
+            .padding(horizontal = 15.dp, vertical = 4.dp)
             .height(42.dp)
             .background(
-                color = if (selected) SelectedGreen else Color.Transparent,
-                shape = RoundedCornerShape(22.dp)
+                if (selected) SelectedGreen else Color.Transparent,
+                RoundedCornerShape(22.dp)
             )
-            .clickable {
-                onClick()
-            }
+            .clickable { onClick() }
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = title,
-            tint = White,
-            modifier = Modifier.size(19.dp)
-        )
-
-        Spacer(modifier = Modifier.width(14.dp))
-
-        Text(
-            text = title,
-            color = White,
-            fontSize = 13.sp
-        )
+        Icon(icon, title, tint = White, modifier = Modifier.size(19.dp))
+        Spacer(Modifier.width(14.dp))
+        Text(title, color = White, fontSize = 13.sp)
     }
 }
-
-// =========================================================
-// TABLE HEADER
-// =========================================================
 
 @Composable
 private fun CollectorTableHeader() {
     Row(
-        modifier = Modifier
+        Modifier
             .fillMaxWidth()
             .height(50.dp)
-            .background(
-                Color(0xFFF1F9F3),
-                RoundedCornerShape(10.dp)
-            )
+            .background(Color(0xFFF1F9F3), RoundedCornerShape(10.dp))
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -793,10 +662,6 @@ private fun CollectorTableHeader() {
     }
 }
 
-// =========================================================
-// TABLE ROW
-// =========================================================
-
 @Composable
 private fun CollectorRow(
     collector: Collector,
@@ -805,83 +670,49 @@ private fun CollectorRow(
     onDelete: () -> Unit
 ) {
     Row(
-        modifier = Modifier
+        Modifier
             .fillMaxWidth()
             .height(45.dp)
             .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
-        TableText(
-            collector.collectorId,
-            0.14f
-        )
-
-        // CLICKABLE NAME - OPENS THIS COLLECTOR'S TASK HISTORY
-        TableNameText(
-            text = collector.fullName,
-            weight = 0.15f,
-            onClick = onNameClick
-        )
-
-        TableText(
-            collector.assignedArea,
-            0.15f
-        )
-
-        TableText(
-            collector.phoneNumber,
-            0.13f
-        )
-
-        TableText(
-            collector.tasks.toString(),
-            0.07f
-        )
-
-        TableText(
-            collector.completed.toString(),
-            0.09f
-        )
-
-        // STATUS
+        TableText(collector.collectorId, 0.14f)
+        TableNameText(collector.fullName, 0.15f, onNameClick)
+        TableText(collector.assignedArea, 0.15f)
+        TableText(collector.phoneNumber, 0.13f)
+        TableText(collector.tasks.toString(), 0.07f)
+        TableText(collector.completed.toString(), 0.09f)
 
         Box(
-            modifier = Modifier.weight(0.10f),
+            Modifier.weight(0.10f),
             contentAlignment = Alignment.CenterStart
         ) {
             Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                Modifier
+                    .clip(RoundedCornerShape(5.dp))
                     .background(
                         if (collector.status == "Active") {
                             ActiveGreen
                         } else {
-                            InactiveGreen
+                            Color(0xFFE1E1E1)
                         }
                     )
-                    .padding(
-                        horizontal = 7.dp,
-                        vertical = 3.dp
-                    )
+                    .padding(horizontal = 7.dp, vertical = 3.dp)
             ) {
                 Text(
-                    text = collector.status,
+                    collector.status,
                     color = if (collector.status == "Active") {
                         ActiveText
                     } else {
-                        Color(0xFF355C3D)
+                        Color.DarkGray
                     },
                     fontSize = 10.sp
                 )
             }
         }
 
-        // ACTIONS
-
         Row(
-            modifier = Modifier.weight(0.12f),
-            horizontalArrangement = Arrangement.Start,
+            Modifier.weight(0.12f),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(
@@ -889,8 +720,8 @@ private fun CollectorRow(
                 modifier = Modifier.size(29.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Edit Collector",
+                    Icons.Default.Edit,
+                    "Edit Collector",
                     tint = Color(0xFF555555),
                     modifier = Modifier.size(14.dp)
                 )
@@ -901,8 +732,8 @@ private fun CollectorRow(
                 modifier = Modifier.size(29.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete Collector",
+                    Icons.Default.Delete,
+                    "Delete Collector",
                     tint = Red,
                     modifier = Modifier.size(14.dp)
                 )
@@ -911,28 +742,16 @@ private fun CollectorRow(
     }
 }
 
-// =========================================================
-// TABLE TEXT
-// =========================================================
-
 @Composable
-private fun RowScope.TableText(
-    text: String,
-    weight: Float
-) {
+private fun RowScope.TableText(text: String, weight: Float) {
     Text(
         text = text,
         color = TextGreen,
         fontSize = 12.sp,
-        modifier = Modifier
-            .weight(weight)
-            .padding(end = 4.dp)
+        maxLines = 1,
+        modifier = Modifier.weight(weight).padding(end = 4.dp)
     )
 }
-
-// =========================================================
-// CLICKABLE COLLECTOR NAME
-// =========================================================
 
 @Composable
 private fun RowScope.TableNameText(
@@ -945,6 +764,7 @@ private fun RowScope.TableNameText(
         color = EcoGreen,
         fontSize = 12.sp,
         fontWeight = FontWeight.Medium,
+        maxLines = 1,
         modifier = Modifier
             .weight(weight)
             .padding(end = 4.dp)
@@ -953,276 +773,305 @@ private fun RowScope.TableNameText(
 }
 
 @Composable
-private fun RowScope.TableHeaderText(
-    text: String,
-    weight: Float
-) {
+private fun RowScope.TableHeaderText(text: String, weight: Float) {
     Text(
         text = text,
         color = TextGreen,
         fontSize = 12.sp,
         fontWeight = FontWeight.Medium,
-        modifier = Modifier
-            .weight(weight)
-            .padding(end = 4.dp)
+        maxLines = 1,
+        modifier = Modifier.weight(weight).padding(end = 4.dp)
     )
 }
 
-// ============================================================
-// TASK HISTORY DIALOG - ADDED
-// ============================================================
+@Composable
+private fun AddCollectorTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    icon: ImageVector,
+    isPassword: Boolean = false
+) {
+    var showPassword by remember { mutableStateOf(false) }
+
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .border(1.dp, LightBorder, RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = EcoDarkGreen,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(Modifier.width(9.dp))
+
+        Box(Modifier.weight(1f)) {
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                visualTransformation = if (isPassword && !showPassword) {
+                    PasswordVisualTransformation()
+                } else {
+                    VisualTransformation.None
+                },
+                modifier = Modifier.fillMaxWidth(),
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    fontSize = 12.sp,
+                    color = TextGreen
+                ),
+                decorationBox = { inner ->
+                    if (value.isEmpty()) {
+                        Text(
+                            label,
+                            fontSize = 12.sp,
+                            color = Color(0xFF758078)
+                        )
+                    }
+                    inner()
+                }
+            )
+        }
+
+        if (isPassword) {
+            IconButton(
+                onClick = { showPassword = !showPassword },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = if (showPassword) {
+                        Icons.Default.VisibilityOff
+                    } else {
+                        Icons.Default.Visibility
+                    },
+                    contentDescription = if (showPassword) {
+                        "Hide password"
+                    } else {
+                        "Show password"
+                    },
+                    tint = EcoDarkGreen,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
 
 @Composable
-private fun CollectorTaskHistoryDialog(
-    collector: Collector,
-    onDismiss: () -> Unit
+private fun AddCollectorDialog(
+    nextCollectorId: String,
+    isSaving: Boolean,
+    errorMessage: String,
+    onDismiss: () -> Unit,
+    onAdd: (String, String, String, String, String, String) -> Unit
 ) {
-    val history = remember(collector.collectorId) {
-        getCollectorTaskHistory(collector.collectorId)
-    }
+    var fullName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var assignedArea by remember { mutableStateOf("Barangay Bulua") }
+    var status by remember { mutableStateOf("Active") }
+    var statusExpanded by remember { mutableStateOf(false) }
 
-    val initials = collector.fullName
-        .split(" ")
-        .filter { it.isNotBlank() }
-        .take(2)
-        .joinToString("") { it.first().uppercase() }
+    val todayDate = SimpleDateFormat(
+        "MMM dd, yyyy",
+        Locale.getDefault()
+    ).format(Date())
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false
-        )
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth(0.40f)
-                .widthIn(max = 620.dp)
-                .heightIn(max = 680.dp)
-                .shadow(
-                    elevation = 8.dp,
-                    shape = RoundedCornerShape(18.dp)
-                ),
-            shape = RoundedCornerShape(18.dp),
-            color = White
-        ) {
+    val validEmail = android.util.Patterns.EMAIL_ADDRESS
+        .matcher(email.trim())
+        .matches()
+
+    val canAdd = fullName.isNotBlank() &&
+            validEmail &&
+            password.length >= 8 &&
+            phone.isNotBlank() &&
+            assignedArea.isNotBlank() &&
+            !isSaving
+
+    AlertDialog(
+        onDismissRequest = { if (!isSaving) onDismiss() },
+        containerColor = White,
+        title = {
+            Column {
+                Text(
+                    "COLLECTORS",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = EcoDarkGreen
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Add New Collector",
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextGreen
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Create a new garbage collector account.",
+                    fontSize = 11.sp,
+                    color = TextGreen
+                )
+            }
+        },
+        text = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 720.dp)
-                    .padding(24.dp)
+                Modifier
+                    .heightIn(max = 430.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                AddCollectorTextField(
+                    fullName, { fullName = it },
+                    "Full Name", Icons.Default.Person
+                )
+                AddCollectorTextField(
+                    email, { email = it },
+                    "Email Address", Icons.Default.AccountCircle
+                )
+                AddCollectorTextField(
+                    password, { password = it },
+                    "Password (at least 8 characters)",
+                    Icons.Default.Person, true
+                )
+                AddCollectorTextField(
+                    phone, { phone = it },
+                    "Phone Number", Icons.Default.Phone
+                )
+                AddCollectorTextField(
+                    assignedArea, { assignedArea = it },
+                    "Assigned Barangay", Icons.Default.LocationOn
+                )
 
-                // HEADER + X CLOSE BUTTON
+                if (email.isNotBlank() && !validEmail) {
+                    Text(
+                        "Please enter a valid email address.",
+                        color = Red,
+                        fontSize = 11.sp
+                    )
+                }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f)
+                if (password.isNotEmpty() && password.length < 8) {
+                    Text(
+                        "Password must contain at least 8 characters.",
+                        color = Red,
+                        fontSize = 11.sp
+                    )
+                }
+
+                Box {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .border(1.dp, LightBorder, RoundedCornerShape(10.dp))
+                            .clickable(enabled = !isSaving) {
+                                statusExpanded = true
+                            }
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "${collector.collectorId}",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Red
-                        )
-
-                        Spacer(modifier = Modifier.height(5.dp))
-
-                        Text(
-                            text = "Task History — ${collector.fullName}",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
+                            "Account Status",
+                            fontSize = 11.sp,
                             color = TextGreen
                         )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // COLLECTOR INFORMATION
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            EcoLightGreen,
-                            RoundedCornerShape(12.dp)
-                        )
-                        .padding(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(EcoDarkGreen),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = initials,
-                            color = White,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
+                        Spacer(Modifier.weight(1f))
+                        Text(status, fontSize = 12.sp, color = TextGreen)
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            "Status",
+                            tint = EcoDarkGreen
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(10.dp))
-
-                    Column(
-                        modifier = Modifier.weight(1f)
+                    DropdownMenu(
+                        expanded = statusExpanded,
+                        onDismissRequest = { statusExpanded = false }
                     ) {
-                        Text(
-                            text = collector.fullName,
-                            color = TextGreen,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
+                        DropdownMenuItem(
+                            text = { Text("Active") },
+                            onClick = {
+                                status = "Active"
+                                statusExpanded = false
+                            }
                         )
-
-                        Spacer(modifier = Modifier.height(0.dp))
-
-                        Text(
-                            text = collector.assignedArea,
-                            color = TextGreen,
-                            fontSize = 12.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(0.dp))
-
-                        Text(
-                            text = collector.phoneNumber,
-                            color = Color(0xFF66756A),
-                            fontSize = 12.sp
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                if (collector.status == "Active") {
-                                    ActiveGreen
-                                } else {
-                                    InactiveGreen
-                                }
-                            )
-                            .padding(
-                                horizontal = 9.dp,
-                                vertical = 5.dp
-                            )
-                    ) {
-                        Text(
-                            text = collector.status,
-                            color = if (collector.status == "Active") {
-                                ActiveText
-                            } else {
-                                Color(0xFF355C3D)
-                            },
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
+                        DropdownMenuItem(
+                            text = { Text("Inactive") },
+                            onClick = {
+                                status = "Inactive"
+                                statusExpanded = false
+                            }
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // TASK SUMMARY
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TaskSummaryCard(
-                        label = "Total Tasks",
-                        count = history.totalTasks,
-                        modifier = Modifier.weight(1f),
-                        background = Color(0xFFF1F9F3),
-                        countColor = TextGreen
-                    )
-
-                    TaskSummaryCard(
-                        label = "Completed",
-                        count = history.completedTasks,
-                        modifier = Modifier.weight(1f),
-                        background = Color(0xFFE1F4E5),
-                        countColor = EcoGreen
-                    )
-
-                    TaskSummaryCard(
-                        label = "In Progress",
-                        count = history.inProgressTasks,
-                        modifier = Modifier.weight(1f),
-                        background = Color(0xFFFFF1D6),
-                        countColor = Color(0xFF9A6700)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                Text(
-                    text = "Assigned Reports",
-                    color = TextGreen,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // DIFFERENT REPORTS FOR EACH COLLECTOR
 
                 Column(
-                    modifier = Modifier
-                        .weight(1f, fill = false)
+                    Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 320.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(9.dp)
+                        .background(EcoLightGreen, RoundedCornerShape(10.dp))
+                        .padding(12.dp)
                 ) {
-                    if (history.reports.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    Color(0xFFF8FAF8),
-                                    RoundedCornerShape(10.dp)
-                                )
-                                .padding(20.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "No assigned report history available.",
-                                color = Color(0xFF758078),
-                                fontSize = 12.sp,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    } else {
-                        history.reports.forEach { report ->
-                            TaskHistoryReportCard(report = report)
-                        }
-                    }
+                    Text(
+                        "System Information",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = EcoDarkGreen
+                    )
+                    Text(
+                        "Collector ID: assigned by the database",
+                        fontSize = 11.sp,
+                        color = TextGreen
+                    )
+                    Text("Date: $todayDate", fontSize = 11.sp, color = TextGreen)
+                    Text(
+                        "Login credentials are not emailed automatically.",
+                        fontSize = 11.sp,
+                        color = TextGreen
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "Showing ${history.reports.size} of ${history.totalTasks} total tasks",
-                    color = Color(0xFF758078),
-                    fontSize = 12.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // CLOSE BUTTON
+                if (errorMessage.isNotBlank()) {
+                    Text(errorMessage, color = Red, fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    enabled = !isSaving,
+                    modifier = Modifier.weight(1f).height(42.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, EcoGreen)
+                ) {
+                    Text("Cancel", fontSize = 10.sp)
+                }
 
                 Button(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(42.dp),
+                    onClick = {
+                        onAdd(
+                            fullName.trim(),
+                            email.trim(),
+                            password,
+                            phone.trim(),
+                            assignedArea.trim(),
+                            status
+                        )
+                    },
+                    enabled = canAdd,
+                    modifier = Modifier.weight(1f).height(42.dp),
                     shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = EcoGreen,
@@ -1230,19 +1079,578 @@ private fun CollectorTaskHistoryDialog(
                     )
                 ) {
                     Text(
-                        text = "Close",
-                        fontSize = 12.sp,
+                        if (isSaving) "Saving..." else "Add Collector",
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
+                }
+            }
+        },
+        dismissButton = {}
+    )
+}
+
+@Composable
+private fun EditCollectorDialog(
+    collector: Collector,
+    onDismiss: () -> Unit,
+    onSave: (Collector) -> Unit
+) {
+    var fullName by remember { mutableStateOf(collector.fullName) }
+    var phone by remember { mutableStateOf(collector.phoneNumber) }
+    var area by remember { mutableStateOf(collector.assignedArea) }
+    var status by remember { mutableStateOf(collector.status) }
+    var expanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = White,
+        title = {
+            Text(
+                "Edit Collector",
+                color = TextGreen,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                AddCollectorTextField(
+                    fullName, { fullName = it },
+                    "Full Name", Icons.Default.Person
+                )
+                AddCollectorTextField(
+                    phone, { phone = it },
+                    "Phone Number", Icons.Default.Phone
+                )
+                AddCollectorTextField(
+                    area, { area = it },
+                    "Assigned Area", Icons.Default.LocationOn
+                )
+
+                Box {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { expanded = true }
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Status: $status", color = TextGreen)
+                        Spacer(Modifier.weight(1f))
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            "Choose status"
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Active") },
+                            onClick = {
+                                status = "Active"
+                                expanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Inactive") },
+                            onClick = {
+                                status = "Inactive"
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(
+                        collector.copy(
+                            fullName = fullName,
+                            phoneNumber = phone,
+                            assignedArea = area,
+                            status = status
+                        )
+                    )
+                },
+                enabled = fullName.isNotBlank() &&
+                        phone.isNotBlank() &&
+                        area.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = EcoGreen
+                )
+            ) {
+                Text("Save Changes")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+private fun DeleteCollectorDialog(
+    collector: Collector,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = White,
+        title = {
+            Text(
+                "Delete Collector",
+                color = TextGreen,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                "Are you sure you want to delete ${collector.fullName}? " +
+                        "This action cannot be undone.",
+                color = TextGreen
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = Red)
+            ) {
+                Text("Delete")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+
+
+
+@Composable
+private fun CollectorTaskHistoryDialog(
+    collector: Collector,
+    history: CollectorTaskHistory?,
+    isLoading: Boolean,
+    errorMessage: String,
+    accessToken: String,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var imageUrl by remember(collector.collectorId) {
+        mutableStateOf(collector.profileImage)
+    }
+    var isUploading by remember { mutableStateOf(false) }
+    var uploadMessage by remember { mutableStateOf("") }
+    var showPhotoOptions by remember { mutableStateOf(false) }
+
+    suspend fun uploadImage(uri: Uri, mimeType: String) {
+        var tempFile: File? = null
+
+        try {
+            isUploading = true
+            uploadMessage = ""
+
+            require(
+                mimeType.lowercase(Locale.ROOT) in
+                        listOf("image/jpeg", "image/png", "image/webp")
+            ) {
+                "Please select a JPG, PNG, or WEBP image."
+            }
+
+            require(accessToken.isNotBlank()) {
+                "Please log in again before uploading a photo."
+            }
+
+            val extension = when (mimeType.lowercase(Locale.ROOT)) {
+                "image/png" -> ".png"
+                "image/webp" -> ".webp"
+                else -> ".jpg"
+            }
+
+            tempFile = File.createTempFile(
+                "collector_profile_",
+                extension,
+                context.cacheDir
+            )
+
+            val input = context.contentResolver.openInputStream(uri)
+                ?: throw IllegalStateException("Could not read the image.")
+
+            input.use { source ->
+                tempFile.outputStream().use { output ->
+                    source.copyTo(output)
+                }
+            }
+
+            require(tempFile.length() > 0L) {
+                "The selected image is empty."
+            }
+
+            require(tempFile.length() <= 5L * 1024 * 1024) {
+                "Image must be 5 MB or smaller."
+            }
+
+            val collectorId = collector.collectorId
+                .removePrefix("COL-")
+                .toIntOrNull()
+                ?.toString()
+                ?: throw IllegalArgumentException("Invalid collector ID.")
+
+            val response = ApiClient.uploadCollectorProfileImage(
+                accessToken = accessToken,
+                collectorId = collectorId,
+                imageFile = tempFile,
+                imageMimeType = mimeType.lowercase(Locale.ROOT)
+            )
+
+            val savedUrl = response
+                .optJSONObject("collector")
+                ?.optString("profile_image")
+                ?.takeIf { it.isNotBlank() && it != "null" }
+                ?: throw IllegalStateException(
+                    "The server did not return the saved profile image URL."
+                )
+
+            // Refresh the image URL so Coil does not show a cached old photo.
+            val separator = if (savedUrl.contains("?")) "&" else "?"
+            imageUrl = "$savedUrl${separator}refresh=${System.currentTimeMillis()}"
+
+            uploadMessage = "Profile picture saved."
+        } catch (e: Exception) {
+            uploadMessage = e.message ?: "Image upload failed."
+        } finally {
+            tempFile?.delete()
+            isUploading = false
+        }
+    }
+
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                val mimeType = context.contentResolver.getType(uri)
+                    ?: "image/jpeg"
+
+                uploadImage(uri, mimeType)
+            }
+        }
+    }
+
+    if (showPhotoOptions) {
+        AlertDialog(
+            onDismissRequest = { showPhotoOptions = false },
+            containerColor = White,
+            title = {
+                Text(
+                    "Change Profile Picture",
+                    color = TextGreen,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TextButton(
+                        onClick = {
+                            showPhotoOptions = false
+                            imagePicker.launch("image/*")
+                        },
+                        enabled = !isUploading,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Default.PhotoLibrary,
+                            contentDescription = null
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Choose from Gallery")
+                    }
+
+                    TextButton(
+                        onClick = { showPhotoOptions = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.5f)
+                .widthIn(max = 500.dp)
+                .heightIn(max = 680.dp),
+            shape = RoundedCornerShape(18.dp),
+            color = White
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 680.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp)
+            ) {
+                Text(
+                    text = "${collector.collectorId} — Task History",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextGreen
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.size(76.dp),
+                        contentAlignment = Alignment.BottomEnd
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(76.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFE1F4E5)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (!imageUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = imageUrl,
+                                    contentDescription = "Collector profile picture",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Collector profile picture",
+                                    tint = EcoGreen,
+                                    modifier = Modifier.size(44.dp)
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = { showPhotoOptions = true },
+                            enabled = !isUploading,
+                            modifier = Modifier
+                                .size(22.dp)
+                                .background(EcoGreen, CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Change profile picture",
+                                tint = White,
+                                modifier = Modifier.size(11.dp)
+                            )
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Text(
+                            collector.fullName,
+                            color = TextGreen,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            collector.assignedArea.takeIf {
+                                it.isNotBlank() &&
+                                        !it.equals("Not Provided", true)
+                            } ?: "Location not provided",
+                            color = TextGreen,
+                            fontSize = 12.sp
+                        )
+
+                        Text(
+                            collector.phoneNumber.takeIf {
+                                it.isNotBlank() &&
+                                        !it.equals("Not Provided", true)
+                            } ?: "Phone number not provided",
+                            color = Color(0xFF758078),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                if (isUploading) {
+                    Spacer(Modifier.height(8.dp))
+
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = EcoGreen
+                    )
+
+                    Text(
+                        "Saving profile picture...",
+                        fontSize = 11.sp,
+                        color = TextGreen
+                    )
+                }
+
+                if (uploadMessage.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+
+                    Text(
+                        uploadMessage,
+                        color = if (uploadMessage == "Profile picture saved.")
+                            EcoGreen else Red,
+                        fontSize = 11.sp
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TaskSummaryCard(
+                        label = "Total Tasks",
+                        count = history?.totalTasks ?: 0,
+                        modifier = Modifier.weight(1f),
+                        background = Color(0xFFF1F9F3),
+                        countColor = TextGreen
+                    )
+
+                    TaskSummaryCard(
+                        label = "Completed",
+                        count = history?.completedTasks ?: 0,
+                        modifier = Modifier.weight(1f),
+                        background = Color(0xFFE1F4E5),
+                        countColor = EcoGreen
+                    )
+
+                    TaskSummaryCard(
+                        label = "In Progress",
+                        count = history?.inProgressTasks ?: 0,
+                        modifier = Modifier.weight(1f),
+                        background = Color(0xFFFFF1D6),
+                        countColor = Color(0xFF9A6700)
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    "Assigned Reports",
+                    fontWeight = FontWeight.Bold,
+                    color = TextGreen
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 100.dp, max = 320.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = EcoGreen,
+                                modifier = Modifier.size(30.dp)
+                            )
+                        }
+                    }
+
+                    errorMessage.isNotBlank() -> {
+                        Text(
+                            "Unable to load task history: $errorMessage",
+                            color = Red,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    history == null || history.reports.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 70.dp, max = 320.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No assigned tasks yet.",
+                                color = Color(0xFF758078),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+
+                    else -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 320.dp),
+                            verticalArrangement = Arrangement.spacedBy(9.dp)
+                        ) {
+                            history.reports.forEach { report ->
+                                TaskHistoryReportCard(report)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    text = if (isLoading || errorMessage.isNotBlank()) {
+                        "Task history has not finished loading."
+                    } else {
+                        "Showing ${history?.reports?.size ?: 0} of " +
+                                "${history?.totalTasks ?: 0} total tasks"
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    color = Color(0xFF758078),
+                    fontSize = 12.sp
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = EcoGreen
+                    )
+                ) {
+                    Text("Close")
                 }
             }
         }
     }
 }
 
-// ============================================================
-// TASK SUMMARY CARD - ADDED
-// ============================================================
+
 
 @Composable
 private fun TaskSummaryCard(
@@ -1254,14 +1662,8 @@ private fun TaskSummaryCard(
 ) {
     Column(
         modifier = modifier
-            .background(
-                background,
-                RoundedCornerShape(10.dp)
-            )
-            .padding(
-                horizontal = 6.dp,
-                vertical = 12.dp
-            ),
+            .background(background, RoundedCornerShape(10.dp))
+            .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -1270,9 +1672,7 @@ private fun TaskSummaryCard(
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold
         )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
+        Spacer(Modifier.height(4.dp))
         Text(
             text = label,
             color = TextGreen,
@@ -1282,767 +1682,66 @@ private fun TaskSummaryCard(
     }
 }
 
-// ============================================================
-// TASK HISTORY REPORT CARD - ADDED
-// ============================================================
-
 @Composable
 private fun TaskHistoryReportCard(
     report: TaskHistoryReport
 ) {
-    val resolved = report.status == "Resolved"
-
-    val statusBackground = if (resolved) {
-        Color(0xFFE1F4E5)
-    } else {
-        Color(0xFFFFF1D6)
-    }
-
-    val statusText = if (resolved) {
-        EcoGreen
-    } else {
-        Color(0xFF9A6700)
-    }
+    val normalizedStatus = report.status.trim().lowercase(Locale.ROOT)
+    val completed = normalizedStatus in listOf(
+        "resolved",
+        "completed"
+    )
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = LightBorder,
-                shape = RoundedCornerShape(10.dp)
-            )
-            .background(
-                White,
-                RoundedCornerShape(10.dp)
-            )
+            .border(1.dp, LightBorder, RoundedCornerShape(10.dp))
             .padding(12.dp)
     ) {
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = report.reportId,
+                report.reportId,
                 color = TextGreen,
-                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(7.dp))
-                    .background(statusBackground)
-                    .padding(
-                        horizontal = 8.dp,
-                        vertical = 4.dp
-                    )
-            ) {
-                Text(
-                    text = report.status,
-                    color = statusText,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                report.status,
+                color = if (completed) EcoGreen else Color(0xFF9A6700),
+                fontSize = 12.sp
+            )
         }
 
-        Spacer(modifier = Modifier.height(0.dp))
+        Spacer(Modifier.height(4.dp))
 
         Text(
-            text = report.issue,
+            report.issue,
             color = TextGreen,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp
         )
 
-        Spacer(modifier = Modifier.height(0.dp))
-
         Text(
-            text = report.location,
+            report.location,
             color = Color(0xFF66756A),
             fontSize = 12.sp
         )
 
-        Spacer(modifier = Modifier.height(0.dp))
+        Spacer(Modifier.height(4.dp))
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 imageVector = Icons.Default.CheckCircle,
                 contentDescription = null,
-                tint = if (resolved) EcoGreen else Color(0xFFB7811B),
+                tint = if (completed) EcoGreen else Color(0xFFB7811B),
                 modifier = Modifier.size(12.dp)
             )
-
+            Spacer(Modifier.width(4.dp))
             Text(
-                text = report.date,
+                report.date,
                 color = Color(0xFF758078),
                 fontSize = 12.sp
             )
         }
     }
-}
-
-// ============================================================
-// ADD COLLECTOR TEXT FIELD
-// ============================================================
-
-@Composable
-private fun AddCollectorTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    icon: ImageVector
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(48.dp)
-            .border(
-                width = 1.dp,
-                color = LightBorder,
-                shape = RoundedCornerShape(10.dp)
-            )
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = EcoDarkGreen,
-            modifier = Modifier.size(18.dp)
-        )
-
-        Spacer(modifier = Modifier.width(9.dp))
-
-        androidx.compose.foundation.text.BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = androidx.compose.ui.text.TextStyle(
-                fontSize = 12.sp,
-                color = TextGreen
-            ),
-            decorationBox = { innerTextField ->
-                if (value.isEmpty()) {
-                    Text(
-                        text = label,
-                        fontSize = 12.sp,
-                        color = TextGreen
-                    )
-                }
-
-                innerTextField()
-            }
-        )
-    }
-}
-
-// ============================================================
-// ADD COLLECTOR DIALOG
-// ============================================================
-
-@Composable
-private fun AddCollectorDialog(
-    nextCollectorId: String,
-    onDismiss: () -> Unit,
-    onAdd: (
-        fullName: String,
-        phone: String,
-        assignedArea: String,
-        status: String
-    ) -> Unit
-) {
-    var fullName by remember {
-        mutableStateOf("")
-    }
-
-    var phone by remember {
-        mutableStateOf("")
-    }
-
-    var assignedArea by remember {
-        mutableStateOf("")
-    }
-
-    var status by remember {
-        mutableStateOf("Active")
-    }
-
-    var statusExpanded by remember {
-        mutableStateOf(false)
-    }
-
-    val todayDate = SimpleDateFormat(
-        "MMM dd, yyyy",
-        Locale.getDefault()
-    ).format(Date())
-
-    val canAdd = fullName.isNotBlank() &&
-            phone.isNotBlank() &&
-            assignedArea.isNotBlank()
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = White,
-
-        title = {
-            Column {
-                Text(
-                    text = "COLLECTORS",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = EcoDarkGreen
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = "Add New Collector",
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextGreen
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "Create a new garbage collector account.",
-                    fontSize = 11.sp,
-                    color = TextGreen
-                )
-            }
-        },
-
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                AddCollectorTextField(
-                    value = fullName,
-                    onValueChange = { fullName = it },
-                    label = "Full Name",
-                    icon = Icons.Default.Person
-                )
-
-                AddCollectorTextField(
-                    value = phone,
-                    onValueChange = { phone = it },
-                    label = "Phone Number",
-                    icon = Icons.Default.Phone
-                )
-
-                AddCollectorTextField(
-                    value = assignedArea,
-                    onValueChange = { assignedArea = it },
-                    label = "Assigned Area / Barangay",
-                    icon = Icons.Default.LocationOn
-                )
-
-                Box {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .border(
-                                width = 1.dp,
-                                color = LightBorder,
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .clickable {
-                                statusExpanded = true
-                            }
-                            .padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Account Status",
-                            fontSize = 11.sp,
-                            color = TextGreen
-                        )
-
-                        Spacer(modifier = Modifier.weight(1f))
-
-                        Text(
-                            text = status,
-                            fontSize = 12.sp,
-                            color = TextGreen
-                        )
-
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Status",
-                            tint = Gray,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = statusExpanded,
-                        onDismissRequest = {
-                            statusExpanded = false
-                        }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Active") },
-                            onClick = {
-                                status = "Active"
-                                statusExpanded = false
-                            }
-                        )
-
-                        DropdownMenuItem(
-                            text = { Text("Inactive") },
-                            onClick = {
-                                status = "Inactive"
-                                statusExpanded = false
-                            }
-                        )
-                    }
-                }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            color = EcoLightGreen,
-                            shape = RoundedCornerShape(10.dp)
-                        )
-                        .padding(12.dp)
-                ) {
-                    Column {
-                        Text(
-                            text = "System Information",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = EcoDarkGreen
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = "Assign a unique Collector ID ($nextCollectorId)",
-                            fontSize = 11.sp,
-                            color = TextGreen
-                        )
-
-                        Text(
-                            text = "Set join date to today ($todayDate)",
-                            fontSize = 11.sp,
-                            color = TextGreen
-                        )
-
-                        Text(
-                            text = "Send login credentials to the provider email",
-                            fontSize = 11.sp,
-                            color = TextGreen
-                        )
-                    }
-                }
-            }
-        },
-
-        confirmButton = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = 8.dp,
-                        end = 8.dp,
-                        bottom = 8.dp
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = EcoGreen
-                    ),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = EcoGreen
-                    )
-                ) {
-                    Text(
-                        text = "Cancel",
-                        fontSize = 10.sp
-                    )
-                }
-
-                Button(
-                    onClick = {
-                        onAdd(
-                            fullName,
-                            phone,
-                            assignedArea,
-                            status
-                        )
-                    },
-                    enabled = canAdd,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = EcoGreen,
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text(
-                        text = "Add Collector",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        },
-
-        dismissButton = {}
-    )
-}
-
-// ============================================================
-// EDIT COLLECTOR DIALOG
-// ============================================================
-
-@Composable
-private fun EditCollectorDialog(
-    collector: Collector,
-    onDismiss: () -> Unit,
-    onSave: (Collector) -> Unit
-) {
-    var fullName by remember {
-        mutableStateOf(collector.fullName)
-    }
-
-    var phone by remember {
-        mutableStateOf(collector.phoneNumber)
-    }
-
-    var assignedArea by remember {
-        mutableStateOf(collector.assignedArea)
-    }
-
-    var status by remember {
-        mutableStateOf(collector.status)
-    }
-
-    var statusExpanded by remember {
-        mutableStateOf(false)
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = White,
-
-        title = {
-            Column {
-                Text(
-                    text = "${collector.collectorId} - EDIT",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = EcoDarkGreen
-                )
-
-                Spacer(modifier = Modifier.height(5.dp))
-
-                Text(
-                    text = "Edit Collector",
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextGreen
-                )
-            }
-        },
-
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                AddCollectorTextField(
-                    value = fullName,
-                    onValueChange = { fullName = it },
-                    label = "Full Name",
-                    icon = Icons.Default.Person
-                )
-
-                AddCollectorTextField(
-                    value = phone,
-                    onValueChange = { phone = it },
-                    label = "Phone Number",
-                    icon = Icons.Default.Phone
-                )
-
-                AddCollectorTextField(
-                    value = assignedArea,
-                    onValueChange = { assignedArea = it },
-                    label = "Assigned Area / Barangay",
-                    icon = Icons.Default.LocationOn
-                )
-
-                Box {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .border(
-                                width = 1.dp,
-                                color = LightBorder,
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .clickable {
-                                statusExpanded = true
-                            }
-                            .padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Account Status",
-                            fontSize = 11.sp,
-                            color = TextGreen
-                        )
-
-                        Spacer(modifier = Modifier.weight(1f))
-
-                        Text(
-                            text = status,
-                            fontSize = 12.sp,
-                            color = TextGreen
-                        )
-
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Status",
-                            tint = Gray,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = statusExpanded,
-                        onDismissRequest = {
-                            statusExpanded = false
-                        }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Active") },
-                            onClick = {
-                                status = "Active"
-                                statusExpanded = false
-                            }
-                        )
-
-                        DropdownMenuItem(
-                            text = { Text("Inactive") },
-                            onClick = {
-                                status = "Inactive"
-                                statusExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
-        },
-
-        confirmButton = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = 8.dp,
-                        end = 8.dp,
-                        bottom = 8.dp
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = EcoGreen
-                    ),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = EcoGreen
-                    )
-                ) {
-                    Text(
-                        text = "Cancel",
-                        fontSize = 10.sp
-                    )
-                }
-
-                Button(
-                    onClick = {
-                        onSave(
-                            collector.copy(
-                                fullName = fullName,
-                                phoneNumber = phone,
-                                assignedArea = assignedArea,
-                                status = status
-                            )
-                        )
-                    },
-                    enabled = fullName.isNotBlank() &&
-                            phone.isNotBlank() &&
-                            assignedArea.isNotBlank(),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = EcoGreen,
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text(
-                        text = "Save Changes",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        },
-
-        dismissButton = {}
-    )
-}
-
-// ============================================================
-// DELETE COLLECTOR DIALOG
-// ============================================================
-
-@Composable
-private fun DeleteCollectorDialog(
-    collector: Collector,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = White,
-
-        title = {
-            Column {
-                Text(
-                    text = "${collector.collectorId}",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Red
-                )
-
-                Spacer(modifier = Modifier.height(5.dp))
-
-                Text(
-                    text = "Delete Collector",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextGreen
-                )
-            }
-        },
-
-        text = {
-            Text(
-                text = "Are you sure you want to delete ${collector.fullName}? This action cannot be undone.",
-                fontSize = 12.sp,
-                color = EcoGreen
-            )
-        },
-
-        confirmButton = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = 8.dp,
-                        end = 8.dp,
-                        bottom = 8.dp
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = EcoGreen
-                    ),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = EcoGreen
-                    )
-                ) {
-                    Text(
-                        text = "Cancel",
-                        fontSize = 12.sp
-                    )
-                }
-
-                Button(
-                    onClick = onConfirm,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Red,
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text(
-                        text = "Delete",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        },
-
-        dismissButton = {}
-    )
-}
-
-// =========================================================
-// GENERATE NEXT COLLECTOR ID
-// =========================================================
-
-private fun generateNextCollectorId(
-    collectors: List<Collector>
-): String {
-
-    if (collectors.isEmpty()) {
-        return "COL-001"
-    }
-
-    val highestNumber = collectors
-        .mapNotNull {
-            it.collectorId
-                .removePrefix("COL-")
-                .toIntOrNull()
-        }
-        .maxOrNull()
-        ?: 0
-
-    return "COL-${(highestNumber + 1)
-        .toString()
-        .padStart(3, '0')}"
 }

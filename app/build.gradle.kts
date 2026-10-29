@@ -53,6 +53,9 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:postgrest-kt:3.2.6")
     implementation("io.github.jan-tennert.supabase:auth-kt:3.2.6")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("androidx.compose.ui:ui")
 
     testImplementation(libs.junit)
 

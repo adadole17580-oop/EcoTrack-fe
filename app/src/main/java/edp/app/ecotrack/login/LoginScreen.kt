@@ -64,7 +64,7 @@ fun LoginScreen(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Spacer(modifier = Modifier.height(110.dp))
+                Spacer(modifier = Modifier.height(240.dp))
 
                 // ECOTRACK LOGO AND NAME
                 Text(
@@ -103,7 +103,7 @@ fun LoginScreen(
                     color = Color(0xFFD6E8D8)
                 )
 
-                Spacer(modifier = Modifier.height(200.dp))
+                Spacer(modifier = Modifier.height(380.dp))
 
                 // CENTERED SLOGAN
                 Text(
